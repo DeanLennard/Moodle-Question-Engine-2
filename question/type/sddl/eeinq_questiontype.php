@@ -102,7 +102,7 @@ class qtype_eeinq extends question_type {
             }
 
         } else {
-            if (!insert_record('question_sddl', $options)) {
+            if (!insert_record('question_'.$this->name(), $options)) {
                 $result->error = 'Could not insert question type \''.$this->name().'\' options!';
                 return $result;
             }
