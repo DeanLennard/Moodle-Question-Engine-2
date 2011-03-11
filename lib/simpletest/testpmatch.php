@@ -19,21 +19,19 @@
 /**
  * This file contains tests that tests the interpretation of a pmatch string.
  *
- * @package qtype
- * @subpackage pmatch
+ * @package pmatch
  * @copyright 2011 The Open University
  * @license http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 
 
-require_once($CFG->dirroot . '/question/type/pmatch/pmatchinterpreter.php');
+require_once($CFG->libdir . '/pmatchlib.php');
 
 class pmatch_test extends UnitTestCase {
     protected function match($string, $expression, $options = null) {
-        $interpreter = new qtype_pmatch_interpreter_match_options();
-        $expression = $interpreter->interpret($expression);
-        $matcher = $interpreter->get_matcher();
-        return $matcher->match_whole_expression($string);
+        $string = new pmatch_parsed_string($string, $options);
+        $expression = new pmatch_expression($expression, $options);
+        return $expression->matches($string);
     }
  
     public function test_pmatch() {
