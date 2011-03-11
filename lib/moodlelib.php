@@ -6967,6 +6967,7 @@ function get_core_subsystems() {
             'pagetype'    => NULL,
             'pix'         => NULL,
             'plagiarism'  => 'plagiarism',
+            'pmatch'      => NULL,
             'portfolio'   => 'portfolio',
             'publish'     => 'course/publish',
             'question'    => 'question',
