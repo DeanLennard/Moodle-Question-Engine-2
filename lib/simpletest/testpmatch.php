@@ -111,7 +111,109 @@ class pmatch_test extends UnitTestCase {
         $this->assertFalse($this->match('tets', 'match_mf(test)'));
         $this->assertTrue($this->match('te', 'match_mf(tes)'));
  
-        // and so on.
+        //allow fewer characters
+        $this->assertTrue($this->match('abcd', 'match_mf(abcd)'));
+        $this->assertTrue($this->match('abc', 'match_mf(abcd)'));
+        $this->assertFalse($this->match('acbd', 'match_mf(abcd)'));
+        $this->assertFalse($this->match('abfd', 'match_mf(abcd)'));
+        $this->assertFalse($this->match('abcf', 'match_mf(abcd)'));
+        $this->assertTrue($this->match('bcd', 'match_mf(abcd)'));
+        $this->assertFalse($this->match('abcdg', 'match_mf(abcd)'));
+        $this->assertFalse($this->match('gabcd', 'match_mf(abcd)'));
+        $this->assertFalse($this->match('abcdg', 'match_mf(abcd)'));
+
+        //allow replace character
+        $this->assertTrue($this->match('abcd', 'match_mr(abcd)'));
+        $this->assertFalse($this->match('abc', 'match_mr(abcd)'));
+        $this->assertFalse($this->match('acbd', 'match_mr(abcd)'));
+        $this->assertTrue($this->match('abfd', 'match_mr(abcd)'));
+        $this->assertTrue($this->match('abcf', 'match_mr(abcd)'));
+        $this->assertTrue($this->match('fbcd', 'match_mr(abcd)'));
+        $this->assertFalse($this->match('bcd', 'match_mr(abcd)'));
+        $this->assertFalse($this->match('abcdg', 'match_mr(abcd)'));
+        $this->assertFalse($this->match('gabcd', 'match_mr(abcd)'));
+        $this->assertFalse($this->match('abcdg', 'match_mr(abcd)'));
+
+        //allow transpose characters
+        $this->assertTrue($this->match('abcd', 'match_mt(abcd)'));
+        $this->assertFalse($this->match('abc', 'match_mt(abcd)'));
+        $this->assertTrue($this->match('acbd', 'match_mt(abcd)'));
+        $this->assertTrue($this->match('bacd', 'match_mt(abcd)'));
+        $this->assertTrue($this->match('abdc', 'match_mt(abcd)'));
+        $this->assertFalse($this->match('abfd', 'match_mt(abcd)'));
+        $this->assertFalse($this->match('abcf', 'match_mt(abcd)'));
+        $this->assertFalse($this->match('fbcd', 'match_mt(abcd)'));
+        $this->assertFalse($this->match('bcd', 'match_mt(abcd)'));
+        $this->assertFalse($this->match('abcdg', 'match_mt(abcd)'));
+        $this->assertFalse($this->match('gabcd', 'match_mt(abcd)'));
+        $this->assertFalse($this->match('abcdg', 'match_mt(abcd)'));
+
+
+        //allow extra character
+        $this->assertTrue($this->match('abcd', 'match_mx(abcd)'));
+        $this->assertFalse($this->match('abc', 'match_mx(abcd)'));
+        $this->assertFalse($this->match('acbd', 'match_mx(abcd)'));
+        $this->assertFalse($this->match('bacd', 'match_mx(abcd)'));
+        $this->assertFalse($this->match('abdc', 'match_mx(abcd)'));
+        $this->assertFalse($this->match('abfd', 'match_mx(abcd)'));
+        $this->assertFalse($this->match('abcf', 'match_mx(abcd)'));
+        $this->assertFalse($this->match('fbcd', 'match_mx(abcd)'));
+        $this->assertFalse($this->match('bcd', 'match_mx(abcd)'));
+        $this->assertTrue($this->match('abcdg', 'match_mx(abcd)'));
+        $this->assertTrue($this->match('gabcd', 'match_mx(abcd)'));
+        $this->assertTrue($this->match('abcdg', 'match_mx(abcd)'));
+        $this->assertTrue($this->match('abcd', 'match_mx(abcd)'));
+        $this->assertFalse($this->match('abc', 'match_mx(abcd)'));
+        
+
+        //allow any one mispelling
+        $this->assertTrue($this->match('abcd', 'match_m(abcd)'));
+        $this->assertTrue($this->match('abc', 'match_m(abcd)'));
+        $this->assertTrue($this->match('acbd', 'match_m(abcd)'));
+        $this->assertTrue($this->match('bacd', 'match_m(abcd)'));
+        $this->assertTrue($this->match('abdc', 'match_m(abcd)'));
+        $this->assertTrue($this->match('abfd', 'match_m(abcd)'));
+        $this->assertTrue($this->match('abcf', 'match_m(abcd)'));
+        $this->assertTrue($this->match('fbcd', 'match_m(abcd)'));
+        $this->assertTrue($this->match('bcd', 'match_m(abcd)'));
+        $this->assertTrue($this->match('abcdg', 'match_m(abcd)'));
+        $this->assertTrue($this->match('gabcd', 'match_m(abcd)'));
+        $this->assertTrue($this->match('abcdg', 'match_m(abcd)'));
+
+        $this->assertFalse($this->match('bacde', 'match_m(abcd)'));
+        $this->assertFalse($this->match('badc', 'match_m(abcd)'));
+        $this->assertFalse($this->match('affd', 'match_m(abcd)'));
+        $this->assertFalse($this->match('fbcf', 'match_m(abcd)'));
+        $this->assertFalse($this->match('ffcd', 'match_m(abcd)'));
+        $this->assertFalse($this->match('bfcd', 'match_m(abcd)'));
+        $this->assertFalse($this->match('abccdg', 'match_m(abcd)'));
+        $this->assertFalse($this->match('gabbcd', 'match_m(abcd)'));
+        $this->assertFalse($this->match('abbcdg', 'match_m(abcd)'));
+
+        //allow any two mispelling
+        $this->assertTrue($this->match('abcd', 'match_m2(abcd)'));
+        $this->assertTrue($this->match('abc', 'match_m2(abcd)'));
+        $this->assertTrue($this->match('acbd', 'match_m2(abcd)'));
+        $this->assertTrue($this->match('bacd', 'match_m2(abcd)'));
+        $this->assertTrue($this->match('abdc', 'match_m2(abcd)'));
+        $this->assertTrue($this->match('abfd', 'match_m2(abcd)'));
+        $this->assertTrue($this->match('abcf', 'match_m2(abcd)'));
+        $this->assertTrue($this->match('fbcd', 'match_m2(abcd)'));
+        $this->assertTrue($this->match('bcd', 'match_m2(abcd)'));
+        $this->assertTrue($this->match('abcdg', 'match_m2(abcd)'));
+        $this->assertTrue($this->match('gabcd', 'match_m2(abcd)'));
+        $this->assertTrue($this->match('abcdg', 'match_m2(abcd)'));
+
+        $this->assertTrue($this->match('bacde', 'match_m2(abcd)'));
+        $this->assertTrue($this->match('badc', 'match_m2(abcd)'));
+        $this->assertTrue($this->match('affd', 'match_m2(abcd)'));
+        $this->assertTrue($this->match('fbcf', 'match_m2(abcd)'));
+        $this->assertTrue($this->match('ffcd', 'match_m2(abcd)'));
+        $this->assertTrue($this->match('bfcd', 'match_m2(abcd)'));
+        $this->assertTrue($this->match('abccdg', 'match_m2(abcd)'));
+        $this->assertTrue($this->match('gabbcd', 'match_m2(abcd)'));
+        $this->assertTrue($this->match('abbcdg', 'match_m2(abcd)'));
+
     }
 
 
