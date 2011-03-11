@@ -33,8 +33,22 @@ class pmatch_test extends UnitTestCase {
         $expression = new pmatch_expression($expression, $options);
         return $expression->matches($string);
     }
- 
-    public function test_pmatch() {
+
+    protected function check_error_message_matches($expression, $errorcode, $errorparam, $options = null){
+        $expression = new pmatch_expression($expression, $options);
+        $this->assertFalse($expression->is_valid());
+        $this->assertEqual(get_string($errorcode, 'pmatch', $errorparam), $expression->get_parse_error());
+    }
+
+    public function test_pmatch_error() {
+        $this->check_error_message_matches('match_mow([tom maud]|[sid jane]', 'ie_missingclosingbracket', 'match_mow([tom maud]|[sid jane]'); // No closing bracket.
+        $this->check_error_message_matches('match_mow()', 'ie_unrecognisedsubcontents', 'match_mow()'); // No contents.
+        $this->check_error_message_matches('match_mow([tom maud]|)', 'ie_lastsubcontenttypeorcharacter', '[tom maud]|'); // ends in an or character.
+        $this->check_error_message_matches('match_mow([tom maud] )', 'ie_lastsubcontenttypeworddelimiter', 'match_mow([tom maud] )'); // ends in a space.
+        $this->check_error_message_matches('match_mow([tom maud]_)', 'ie_lastsubcontenttypeworddelimiter', 'match_mow([tom maud]_)'); // ends in a proximity delimiter.
+    }
+
+    public function test_pmatch_matching() {
         // Tests from the original pmatch documentation.
         $this->assertTrue($this->match('tom dick harry', 'match(tom dick harry)')); // This is the exact match.
         $this->assertTrue($this->match('thomas', 'match_c(tom)')); // Extra characters are allowed anywhere within the word.
@@ -99,4 +113,6 @@ class pmatch_test extends UnitTestCase {
  
         // and so on.
     }
+
+
 }

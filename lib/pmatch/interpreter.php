@@ -245,7 +245,7 @@ abstract class pmatch_interpreter_item_with_enclosed_subcontents extends pmatch_
             if (!empty($this->missingclosingpatternerror)){
                 $this->set_error_message($this->missingclosingpatternerror, substr($string, $start, $endofcontents - $start));
             }
-            return array(false, $start);
+            return array(true, $start);
         }
         return array(true, $endofclosing);
     }
