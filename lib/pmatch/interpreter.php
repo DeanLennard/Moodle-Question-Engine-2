@@ -318,7 +318,7 @@ class pmatch_word_level_options {
         $this->misspellingallowtransposetwochars = false;
         $this->misspellingallowextrachar = false;
         $this->misspellingallowfewerchar = false;
-        $this->misspellings = 0;
+        $this->misspellings = 1;
     }
     public function set_allow_extra_characters($allowextracharacters){
         $this->allowextracharacters = $allowextracharacters;
@@ -336,7 +336,9 @@ class pmatch_word_level_options {
         $this->misspellingallowfewerchar = $misspellingallowfewerchar;
     }
     public function set_misspellings($misspellings){
-        $this->misspellings = $misspellings;
+        if ($misspellings > $this->misspellings){
+            $this->misspellings = $misspellings;
+        }
     }
     public function get_allow_extra_characters(){
         return $this->allowextracharacters;
@@ -421,80 +423,76 @@ class pmatch_interpreter_match_options extends pmatch_interpreter_match{
             $this->set_error_message('illegaloptions', $options);
             return false;
         }
-        if (!preg_match('!\_(c|o|w|m|mf|mr|mt|mx|m2|p0|p1|p2|p3|p4)+$!A', $options)){
-            $this->set_error_message('illegaloptions', $options);
-            return false;
-        }
-
-        //word level options
+        $this->phraseleveloptions->reset_options();
         $this->wordleveloptions->reset_options();
-        $this->wordleveloptions->set_allow_extra_characters(FALSE !== strpos($options, 'c'));
-        $moptionpos = strpos($options, 'm');
-        if ($moptionpos !== FALSE){
-            if (isset($options[$moptionpos+1])){
-                $msecondchar = $options[$moptionpos+1];
-            } else {
-                $msecondchar = '';
-            }
-    
-            switch ($msecondchar){
-                case 'r' :
-                    $this->wordleveloptions->set_misspelling_allow_replace_char(true);
-                    $this->wordleveloptions->set_misspellings(1);
-                    break;
-                case 't' :
-                    $this->wordleveloptions->set_misspelling_allow_transpose_two_chars(true);
-                    $this->wordleveloptions->set_misspellings(1);
-                    break;
-                case 'x' :
-                    $this->wordleveloptions->set_misspelling_allow_extra_char(true);
-                    $this->wordleveloptions->set_misspellings(1);
-                    break;
-                case 'f' :
-                    $this->wordleveloptions->set_misspelling_allow_fewer_char(true);
-                    $this->wordleveloptions->set_misspellings(1);
-                    break;
-                case '2' :
-                    $this->wordleveloptions->set_misspellings(2);
-                    $this->wordleveloptions->set_misspelling_allow_replace_char(true);
-                    $this->wordleveloptions->set_misspelling_allow_transpose_two_chars(true);
-                    $this->wordleveloptions->set_misspelling_allow_extra_char(true);
-                    $this->wordleveloptions->set_misspelling_allow_fewer_char(true);
-                    break;
-                default :
-                    $this->wordleveloptions->set_misspellings(1);
-                    $this->wordleveloptions->set_misspelling_allow_replace_char(true);
-                    $this->wordleveloptions->set_misspelling_allow_transpose_two_chars(true);
-                    $this->wordleveloptions->set_misspelling_allow_extra_char(true);
-                    $this->wordleveloptions->set_misspelling_allow_fewer_char(true);
-                    break;
-            }
-            if (FALSE !== strpos($options, 'm', $moptionpos+1)){
+        $misspellingoptionmatches = array();
+        $cursor = 1;//start at second character after '_'
+        while($cursor < strlen($options)){
+            if (FALSE === preg_match('!c|o|w|m[frtx2]*|p[0-4]!A', substr($options, $cursor), $misspellingoptionmatches)){
                 $this->set_error_message('illegaloptions', $options);
                 return false;
             }
-        }
-        if ($this->wordleveloptions->get_allow_extra_characters() 
-                && ($this->wordleveloptions->get_misspelling_allow_replace_char()||
-                    $this->wordleveloptions->get_misspelling_allow_transpose_two_chars()||
-                    $this->wordleveloptions->get_misspelling_allow_extra_char()||
-                    $this->wordleveloptions->get_misspelling_allow_fewer_char())){
-            $this->set_error_message('illegaloptions', $options);
-            return false;
-        }
-
-        //phrase level options
-        $this->phraseleveloptions->reset_options();
-        $this->phraseleveloptions->set_allow_any_word_order(FALSE !== strpos($options, 'o'));
-        $this->phraseleveloptions->set_allow_extra_words(FALSE !== strpos($options, 'w'));
-
-        $proximitymatches = array();
-        $noofproximitymatches = preg_match_all('!p([0-4])!i', $options, $proximitymatches, PREG_PATTERN_ORDER);
-        if ($noofproximitymatches > 1){
-            $this->set_error_message('illegaloptions', $options);
-            return false;
-        } else if ($noofproximitymatches == 1){
-            $this->phraseleveloptions->set_allow_proximity_of($proximitymatches[1][0]);
+            $thisoption = $misspellingoptionmatches[0];
+            switch ($thisoption[0]){
+                case 'm' :
+                    if (strlen($thisoption) == 1){
+                        $this->wordleveloptions->set_misspelling_allow_replace_char(true);
+                        $this->wordleveloptions->set_misspelling_allow_transpose_two_chars(true);
+                        $this->wordleveloptions->set_misspelling_allow_extra_char(true);
+                        $this->wordleveloptions->set_misspelling_allow_fewer_char(true);
+                    } else {
+                        $misspellingoptioncursor = 0;
+                        do {
+                            switch ($thisoption[1 + $misspellingoptioncursor]){
+                                case 'r' :
+                                    $this->wordleveloptions->set_misspelling_allow_replace_char(true);
+                                    break;
+                                case 't' :
+                                    $this->wordleveloptions->set_misspelling_allow_transpose_two_chars(true);
+                                    break;
+                                case 'x' :
+                                    $this->wordleveloptions->set_misspelling_allow_extra_char(true);
+                                    break;
+                                case 'f' :
+                                    $this->wordleveloptions->set_misspelling_allow_fewer_char(true);
+                                    break;
+                                case '2' :
+                                    $this->wordleveloptions->set_misspellings(2);
+                                    $this->wordleveloptions->set_misspelling_allow_replace_char(true);
+                                    $this->wordleveloptions->set_misspelling_allow_transpose_two_chars(true);
+                                    $this->wordleveloptions->set_misspelling_allow_extra_char(true);
+                                    $this->wordleveloptions->set_misspelling_allow_fewer_char(true);
+                                    break;
+                                default :
+                                    $this->set_error_message('illegaloptions', $options);
+                                    return false;
+                            }
+                            $misspellingoptioncursor ++;
+                        } while (isset($thisoption[1 + $misspellingoptioncursor]));
+                    }
+                    break;
+                case 'c' :
+                    $this->wordleveloptions->set_allow_extra_characters(true);
+                    break;
+                case 'p' :
+                    if (FALSE !== preg_match('![0-4]$!A', $thisoption[1])){
+                        $this->set_error_message('illegaloptions', $options);
+                        return false;
+                    } else {
+                        $this->phraseleveloptions->set_allow_proximity_of($thisoption[1]);
+                    }
+                    break;
+                case 'o' :
+                    $this->phraseleveloptions->set_allow_any_word_order(true);
+                    break;
+                case 'w' :
+                    $this->phraseleveloptions->set_allow_extra_words(true);
+                    break;
+                default :
+                    $this->set_error_message('illegaloptions', $options);
+                    return false;
+            }
+            $cursor = $cursor + strlen($thisoption);
         }
         return true;
     }
