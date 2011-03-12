@@ -509,8 +509,9 @@ class pmatch_interpreter_or_list extends pmatch_interpreter_item_with_subcontent
         switch ($this->last_subcontent_type_found($foundsofar)){
             case '':
             case 'or_character':
-                return array('or_list_phrase', 'word');
+                return array('or_list_phrase', 'number', 'word');
             case 'word':
+            case 'number':
             case 'or_list_phrase':
                 return array('or_character');
         }
@@ -526,7 +527,8 @@ class pmatch_interpreter_synonym extends pmatch_interpreter_item_with_subcontent
         switch ($this->last_subcontent_type_found($foundsofar)){
             case '':
             case 'or_character':
-                return array('word');
+                return array('number', 'word');
+            case 'number':
             case 'word':
                 return array('or_character');
         }
@@ -570,6 +572,9 @@ class pmatch_interpreter_word extends pmatch_interpreter_item_with_subcontents{
     protected function next_possible_subcontent($foundsofar){
         return array('character_in_word', 'special_character_in_word', 'wildcard_match_multiple', 'wildcard_match_single');
     }
+}
+class pmatch_interpreter_number extends pmatch_interpreter_item{
+    protected $pattern = '!([+|-]( )?)?[0-9]+(\.[0-9]+)?!';
 }
 class pmatch_interpreter_character_in_word extends pmatch_interpreter_item{
     protected $pattern = '![a-z0-9\!"#£$%&\'/\-+<=>@\^`{}~]!';

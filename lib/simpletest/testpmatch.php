@@ -282,6 +282,17 @@ EOF;
         //similar attempt to trip up matcher as above
         $this->match(true, 'baccffff ffcdffff ffffffff', 'match_m2o(ffffffff abcdffff baccffff)');
         $this->match(false, 'baccffff fffdffff ffffffff', 'match_m2o(ffffffff abcdffff baccffff)');
+
+        //if a float is in the description expect a float,
+        //round the student answer to the same precision before matching
+        $this->match(true, '1.981', 'match(1.98)');
+        $this->match(true, '-1.9851', 'match(- 1.985)');
+        $this->match(true, '1.98', 'match(+1.98)');
+        $this->match(true, '+1.98499999', 'match(+1.98)');
+        $this->match(true, '+101', 'match(101)');
+        $this->match(true, '- 50', 'match(- 50)');
+        //if an integer is in the expression expect an integer
+        $this->match(false, '- 50.333', 'match(- 50)');
     }
 
 

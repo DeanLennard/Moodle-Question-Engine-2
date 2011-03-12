@@ -521,6 +521,37 @@ class pmatch_matcher_word_delimiter_proximity extends pmatch_matcher_item
         return false;
     }
 }
+class pmatch_matcher_number extends pmatch_matcher_item 
+            implements pmatch_can_match_phrase, pmatch_can_contribute_to_length_of_phrase {
+    public function __construct($interpreter, $ignorecase){
+        parent::__construct($interpreter, $ignorecase);
+    }
+    public function match_phrase($words, $phraseleveloptions, $wordleveloptions){
+        if (count($words) == 2){
+            $studentinput = $words[0].$words[1];
+        } else {
+            $studentinput = $words[0];
+        }
+        if (0 === preg_match('![+|-]?[0-9]+(\.[0-9]+)?$!A', $studentinput)){
+            return false;
+        } else {
+            $teacherinput = str_replace(' ', '', $this->interpreter->get_code_fragment());
+            $numberparts = array();
+            preg_match('!([+|-]( )?)?[0-9]+(\.[0-9]+)?$!A', $this->interpreter->get_code_fragment(), $numberparts);
+            if (isset($numberparts[3]) && strlen($numberparts[3]) > 0){
+                $decplaces = strlen($numberparts[3]) - 1;
+                $studentinputrounded = round((float)$studentinput, $decplaces);
+                $teacherinput = (float)$teacherinput;
+                return $studentinputrounded == $teacherinput;
+            } else {
+                return ($teacherinput + 0) == ($studentinput + 0);
+            }
+        }
+    }
+    public function contribution_to_length_of_phrase_can_try($phraseleveloptions){
+        return array(1, 2);//a number can look like two words to the matcher as it may have a space
+    }
+}
 class pmatch_matcher_word extends pmatch_matcher_item_with_subcontents 
             implements pmatch_can_match_word, pmatch_can_contribute_to_length_of_phrase {
     /**
