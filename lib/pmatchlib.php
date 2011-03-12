@@ -157,7 +157,7 @@ class pmatch_expression {
      * @return boolean whether this string matches the expression.
      */
     public function matches(pmatch_parsed_string $parsedstring){
-        $matcher = $this->interpreter->get_matcher();
+        $matcher = $this->interpreter->get_matcher($this->options->ignorecase);
         return $matcher->match_whole_expression($parsedstring->get_words());
     }
     

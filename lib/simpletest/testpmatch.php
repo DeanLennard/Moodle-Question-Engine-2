@@ -217,6 +217,12 @@ class pmatch_test extends UnitTestCase {
         $this->match(true, 'gabbcd', 'match_m2(abcd)');
         $this->match(true, 'abbcdg', 'match_m2(abcd)');
 
+        $options = new pmatch_options();
+        $options->ignorecase = true;
+        $this->match(true, 'ABCD', 'match(abcd)', $options);
+        $this->match(true, 'Mary had a little LamB', 'match(mary had a little lamb)', $options);
+        $options->ignorecase = false;
+        $this->match(false, 'ABCD', 'match(abcd)', $options);
     }
 
 

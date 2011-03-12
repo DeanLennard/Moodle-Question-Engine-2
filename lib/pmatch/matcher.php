@@ -103,14 +103,19 @@ interface pmatch_can_contribute_to_length_of_phrase{
 }
 
 abstract class pmatch_matcher_item{
+    /** @var pmatch_interpreter_item */
     protected $interpreter;
-/**
+    /** @var boolean */
+    protected $ignorecase;
+    /**
      * 
      * Constructor normally called by pmatch_interpreter_item->get_matcher method
      * @param pmatch_interpreter_item $interpreter
+     * @param boolean $ignorecase
      */
-    public function __construct($interpreter){
+    public function __construct($interpreter, $ignorecase){
         $this->interpreter = $interpreter;
+        $this->ignorecase = $ignorecase;
     }
 
     /**
@@ -135,11 +140,11 @@ abstract class pmatch_matcher_item_with_subcontents extends pmatch_matcher_item{
      * Create a tree of matcher items.
      * @param pmatch_interpreter_item_with_subcontents $interpreter
      */
-    public function __construct($interpreter){
-        parent::__construct($interpreter);
+    public function __construct($interpreter, $ignorecase){
+        parent::__construct($interpreter, $ignorecase);
         $interpretersubcontents = $interpreter->get_subcontents();
         foreach ($interpretersubcontents as $interpretersubcontent){
-            $this->subcontents[] = $interpretersubcontent->get_matcher();
+            $this->subcontents[] = $interpretersubcontent->get_matcher($ignorecase);
         }
     }
     /**
@@ -632,7 +637,12 @@ class pmatch_matcher_word extends pmatch_matcher_item_with_subcontents
 class pmatch_matcher_character_in_word extends pmatch_matcher_item implements pmatch_can_match_char{
     public function match_char($character){
         $codefragment = $this->interpreter->get_code_fragment();
-        return ($character == $codefragment);
+        if ($this->ignorecase){
+            $textlib = textlib_get_instance();
+            return ($textlib->strtolower($character) == $textlib->strtolower($codefragment));
+        } else {
+            return ($character == $codefragment);
+        }
     }
 }
 class pmatch_matcher_special_character_in_word extends pmatch_matcher_item implements pmatch_can_match_char{
@@ -643,7 +653,7 @@ class pmatch_matcher_special_character_in_word extends pmatch_matcher_item imple
 }
 class pmatch_matcher_wildcard_match_single extends pmatch_matcher_item implements pmatch_can_match_char{
     public function match_char($character){
-        return array(true);
+        return true;
     }
 }
 class pmatch_matcher_wildcard_match_multiple 

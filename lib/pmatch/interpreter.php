@@ -85,10 +85,10 @@ abstract class pmatch_interpreter_item{
     public function set_error_message($errormessage, $codefragment){
         $this->interpretererrormessage = get_string('ie_'.$errormessage, 'pmatch', $codefragment);
     }
-    public function get_matcher(){
+    public function get_matcher($ignorecase){
         $thistypename = $this->get_type_name_of_interpreter_object($this);
         $matchclassname = 'pmatch_matcher_'.$thistypename;
-        return new $matchclassname($this);
+        return new $matchclassname($this, $ignorecase);
     }
     public function get_type_name_of_interpreter_object($object){
         return substr(get_class($object), 19);
@@ -255,7 +255,6 @@ abstract class pmatch_interpreter_item_with_enclosed_subcontents extends pmatch_
 }
 class pmatch_interpreter_whole_expression extends pmatch_interpreter_item_with_subcontents{
 
-    protected $casesensitive;
 
     protected function next_possible_subcontent($foundsofar){
         return array('not', 'match_any', 'match_all', 'match_options');
