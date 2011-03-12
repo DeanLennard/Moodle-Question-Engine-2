@@ -112,7 +112,8 @@ class pmatch_test extends UnitTestCase {
         $this->match(false, 'testt', 'match_mf(test)');
         $this->match(false, 'tent', 'match_mf(test)');
         $this->match(false, 'tets', 'match_mf(test)');
-        $this->match(true, 'te', 'match_mf(tes)');
+        //fewer characters option is disabled for a pattern of fewer than 4 normal characters in pattern.
+        $this->match(false, 'te', 'match_mf(tes)');
  
         //allow fewer characters
         $this->match(true, 'abcd', 'match_mf(abcd)');
@@ -207,15 +208,15 @@ class pmatch_test extends UnitTestCase {
         $this->match(true, 'gabcd', 'match_m2(abcd)');
         $this->match(true, 'abcdg', 'match_m2(abcd)');
 
-        $this->match(true, 'bacde', 'match_m2(abcd)');
-        $this->match(true, 'badc', 'match_m2(abcd)');
-        $this->match(true, 'affd', 'match_m2(abcd)');
-        $this->match(true, 'fbcf', 'match_m2(abcd)');
-        $this->match(true, 'ffcd', 'match_m2(abcd)');
-        $this->match(true, 'bfcd', 'match_m2(abcd)');
-        $this->match(true, 'abccdg', 'match_m2(abcd)');
-        $this->match(true, 'gabbcd', 'match_m2(abcd)');
-        $this->match(true, 'abbcdg', 'match_m2(abcd)');
+        $this->match(true, 'ffffbacde', 'match_m2(ffffabcd)');
+        $this->match(true, 'ffffbadc', 'match_m2(ffffabcd)');
+        $this->match(true, 'ffffaffd', 'match_m2(ffffabcd)');
+        $this->match(true, 'fffffbcf', 'match_m2(ffffabcd)');
+        $this->match(true, 'ffffffcd', 'match_m2(ffffabcd)');
+        $this->match(true, 'bfcdffff', 'match_m2(abcdffff)');
+        $this->match(true, 'abccdgffff', 'match_m2(abcdffff)');
+        $this->match(true, 'gabbcdffff', 'match_m2(abcdffff)');
+        $this->match(true, 'abbcdgffff', 'match_m2(abcdffff)');
 
         $options = new pmatch_options();
         $options->ignorecase = true;
@@ -253,18 +254,19 @@ EOF;
         $this->match(true, 'lock', $expression);
         $this->match(true, 'dog', $expression);
 
+        //when words are shorter than 8 characters, revert to allow one spelling mistake per word
         $this->match(true, 'dogs are bitter than cuts', 'match_m2(dogs are better than cats)');
-        $this->match(false, 'digs are bitter than cuts', 'match_m2(dogs are better than cats)');
+        $this->match(true, 'digs are bitter than cuts', 'match_m2(dogs are better than cats)');
 
         //try to trip up matcher, can match first to first with two spelling mistakes
         //but then will fail when trying to match second to second which will also have two mistakes 
         //but should match first word to second and second to first with 2 mistakes total
-        $this->match(true, 'bacc ffcd', 'match_m2o(abcd bacc)');
-        $this->match(false, 'bacc fffd', 'match_m2o(abcd bacc)');
+        $this->match(true, 'baccffff ffcdffff', 'match_m2o(abcdffff baccffff)');
+        $this->match(false, 'baccffff fffdffff', 'match_m2o(abcdffff baccffff)');
 
         //similar attempt to trip up matcher as above
-        $this->match(true, 'bacc ffcd ffff', 'match_m2o(ffff abcd bacc)');
-        $this->match(false, 'bacc fffd ffff', 'match_m2o(ffff abcd bacc)');
+        $this->match(true, 'baccffff ffcdffff ffffffff', 'match_m2o(ffffffff abcdffff baccffff)');
+        $this->match(false, 'baccffff fffdffff ffffffff', 'match_m2o(ffffffff abcdffff baccffff)');
     }
 
 
