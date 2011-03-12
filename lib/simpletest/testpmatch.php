@@ -208,7 +208,10 @@ class pmatch_test extends UnitTestCase {
         $this->match(true, 'gabcd', 'match_m2(abcd)');
         $this->match(true, 'abcdg', 'match_m2(abcd)');
 
-        $this->match(true, 'ffffbacde', 'match_m2(ffffabcd)');
+        $this->match(false, 'bacde', 'match_m2(abcd)'); 
+        //ffff padding is to increase pattern length to the required 8 chars
+        //so that two misspellings are allowed
+        $this->match(true, 'ffffbacde', 'match_m2(ffffabcd)'); 
         $this->match(true, 'ffffbadc', 'match_m2(ffffabcd)');
         $this->match(true, 'ffffaffd', 'match_m2(ffffabcd)');
         $this->match(true, 'fffffbcf', 'match_m2(ffffabcd)');
@@ -253,6 +256,18 @@ EOF;
         $this->match(false, 'abc', $expression);
         $this->match(true, 'lock', $expression);
         $this->match(true, 'dog', $expression);
+
+        $expression = <<<EOF
+match_any(
+    match_c(a)
+    match_c(b)
+    match_c(c)
+)
+EOF;
+        $this->match(false, 'efgh', $expression);
+        $this->match(true, 'abc', $expression);
+        $this->match(true, 'lock', $expression);
+        $this->match(false, 'dog', $expression);
 
         //when words are shorter than 8 characters, revert to allow one spelling mistake per word
         $this->match(true, 'dogs are bitter than cuts', 'match_m2(dogs are better than cats)');
