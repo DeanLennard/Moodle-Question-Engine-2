@@ -125,6 +125,7 @@ abstract class pmatch_matcher_item{
     public function get_type(){
         $typeobj = new stdClass();
         $typeobj->name = $this->get_type_name($this);
+        $typeobj->codefragment = $this->interpreter->get_code_fragment();
         return $typeobj;
     }
     public function get_type_name($object){
@@ -154,6 +155,7 @@ abstract class pmatch_matcher_item_with_subcontents extends pmatch_matcher_item{
     public function get_type(){
         $typeobj = new stdClass();
         $typeobj->name = $this->get_type_name($this);
+        $typeobj->codefragment = $this->interpreter->get_code_fragment();
         $typeobj->subcontents = array();
         foreach ($this->subcontents as $subcontent){
             $typeobj->subcontents[] = $subcontent->get_type();
@@ -280,6 +282,9 @@ class pmatch_matcher_whole_expression extends pmatch_matcher_item_with_subconten
     }
 }
 class pmatch_matcher_not extends pmatch_matcher_item_with_subcontents{
+    public function match_whole_expression($words){
+        return !$this->subcontents[0]->match_whole_expression($words);
+    }
 }
 class pmatch_matcher_match extends pmatch_matcher_item_with_subcontents{
 }

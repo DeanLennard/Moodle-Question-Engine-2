@@ -26,7 +26,7 @@
 require_once($CFG->libdir.'/pmatch/matcher.php');
 abstract class pmatch_interpreter_item{
     protected $interpretererrormessage;
-    protected $codefragment;
+    public $codefragment;
     public function interpret($string, $start = 0){
         $this->interpretererrormessage = '';
         list($found, $endofmatch) = $this->interpret_contents($string, $start);

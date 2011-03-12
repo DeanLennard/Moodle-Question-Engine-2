@@ -223,6 +223,35 @@ class pmatch_test extends UnitTestCase {
         $this->match(true, 'Mary had a little LamB', 'match(mary had a little lamb)', $options);
         $options->ignorecase = false;
         $this->match(false, 'ABCD', 'match(abcd)', $options);
+
+        $this->match(true, 'efgh', 'not ( match_c(c) )');
+        $this->match(false, 'abc', 'not ( match_c(c) )');
+        $this->match(false, 'lock', 'not ( match_c(c) )');
+        $this->match(true, 'dog', 'not ( match_c(c) )');
+
+        $expression = <<<EOF
+match_all(
+    not ( match_c(a))
+    not ( match_c(b))
+    not ( match_c(c))
+)
+EOF;
+        $this->match(true, 'efgh', $expression);
+        $this->match(false, 'abc', $expression);
+        $this->match(false, 'lock', $expression);
+        $this->match(true, 'dog', $expression);
+
+        $expression = <<<EOF
+match_any(
+    not ( match_c(a))
+    not ( match_c(b))
+    not ( match_c(c))
+)
+EOF;
+        $this->match(true, 'efgh', $expression);
+        $this->match(false, 'abc', $expression);
+        $this->match(true, 'lock', $expression);
+        $this->match(true, 'dog', $expression);
     }
 
 
