@@ -335,9 +335,7 @@ class pmatch_word_level_options {
         $this->misspellingallowfewerchar = $misspellingallowfewerchar;
     }
     public function set_misspellings($misspellings){
-        if ($misspellings > $this->misspellings){
-            $this->misspellings = $misspellings;
-        }
+        $this->misspellings = $misspellings;
     }
     public function get_allow_extra_characters(){
         return $this->allowextracharacters;

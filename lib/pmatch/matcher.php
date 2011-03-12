@@ -195,7 +195,7 @@ abstract class pmatch_matcher_item_with_subcontents extends pmatch_matcher_item{
      * @param array $wordsmatched
      * @return boolean found a match?
      */
-    protected function check_match_phrase_branch($phrase, $itemtotry = 0, $wordtotry = 0, $wordsmatched = array()){
+    protected function check_match_phrase_branch($phrase, $itemtotry = 0, $wordtotry = 0, $misspellingsused = 0, $wordsmatched = array()){
         if ($wordtotry >= count($phrase)){
             return false;
         }
@@ -204,7 +204,9 @@ abstract class pmatch_matcher_item_with_subcontents extends pmatch_matcher_item{
                     $this->subcontents[$itemtotry - 1]->valid_match($wordsmatched[count($wordsmatched)-1],
                                                                     $wordtotry, $this->phraseleveloptions))
                     && (!in_array($wordtotry, $wordsmatched, true));
-        if ($shallwetry && $this->subcontents[$itemtotry]->match_word($phrase[$wordtotry], $this->wordleveloptions)){
+        $nextwordoptions = clone($this->wordleveloptions);
+        $nextwordoptions->set_misspellings($nextwordoptions->get_misspellings() - $misspellingsused);
+        if ($shallwetry && $this->subcontents[$itemtotry]->match_word($phrase[$wordtotry], $nextwordoptions)){
             //we found a match
             $newwordsmatched = $wordsmatched;
             $newwordsmatched[] = $wordtotry;
@@ -222,7 +224,7 @@ abstract class pmatch_matcher_item_with_subcontents extends pmatch_matcher_item{
                 } else {
                     $nextwordtotry = $wordtotry + 1;
                 }
-                if ($this->check_match_phrase_branch($phrase, $itemtotry + 2, $nextwordtotry, $newwordsmatched)) {
+                if ($this->check_match_phrase_branch($phrase, $itemtotry + 2, $nextwordtotry, $misspellingsused + $this->subcontents[$itemtotry]->get_used_misspellings(), $newwordsmatched)) {
                     return true;
                 }
             }
@@ -247,7 +249,7 @@ abstract class pmatch_matcher_item_with_subcontents extends pmatch_matcher_item{
                     $allowanywordorder = $this->subcontents[$itemtotry + 1]->allow_any_word_order_in_adjacent_phrase($allowanywordorder);
                 }
                 $nextphraseleveloptions->set_allow_any_word_order($allowanywordorder);
-                if ($this->subcontents[$itemtotry]->match_phrase(array_slice($phrase, $wordtotry, $phraselength), $nextphraseleveloptions, $this->wordleveloptions)){
+                if ($this->subcontents[$itemtotry]->match_phrase(array_slice($phrase, $wordtotry, $phraselength), $nextphraseleveloptions, $nextwordoptions)){
                     $wordsmatchedandphrasewords = array_merge($wordsmatched, range($wordtotry, $wordtotry + $phraselength -1));
                     if (($itemtotry) == count($this->subcontents) -1){
                         if (count($wordsmatchedandphrasewords) == count($phrase) || $this->phraseleveloptions->get_allow_extra_words()){
@@ -255,7 +257,7 @@ abstract class pmatch_matcher_item_with_subcontents extends pmatch_matcher_item{
                         } else {
                             return false;
                         }
-                    } else if ($this->check_match_phrase_branch($phrase, $itemtotry + 2, $nextwordtotry, $wordsmatchedandphrasewords)) {
+                    } else if ($this->check_match_phrase_branch($phrase, $itemtotry + 2, $nextwordtotry, $misspellingsused, $wordsmatchedandphrasewords)) {
                         return true;
                     }
                 }
@@ -266,7 +268,7 @@ abstract class pmatch_matcher_item_with_subcontents extends pmatch_matcher_item{
         if ($this->phraseleveloptions->get_allow_extra_words() || $this->phraseleveloptions->get_allow_any_word_order()){
             $nextwordtotry = $wordtotry + 1;
             //try next word
-            if ($this->check_match_phrase_branch($phrase, $itemtotry, $nextwordtotry, $wordsmatched)){
+            if ($this->check_match_phrase_branch($phrase, $itemtotry, $nextwordtotry, $misspellingsused, $wordsmatched)){
                 return true;
             }
         }
@@ -351,20 +353,38 @@ class pmatch_matcher_match_options extends pmatch_matcher_match
 class pmatch_matcher_or_list extends pmatch_matcher_item_with_subcontents
             implements pmatch_can_match_phrase, pmatch_can_match_word, 
                                 pmatch_can_contribute_to_length_of_phrase{
+    protected $usedmisspellings;
+    /**
+     * 
+     * Called after running match_word or match_phrase. This function returns the minimum number of mispellings used to match the student response word to the
+     * pmatch expression.
+     * @return integer the number of misspellings found.
+     */
+    public function get_used_misspellings(){
+        return $this->usedmisspellings;
+    }
     public function match_word($word, $wordleveloptions){
-        foreach ($this->subcontents as $subcontent){
-            if ($subcontent instanceof pmatch_can_match_word &&
-                        $subcontent->match_word($word, $wordleveloptions) === true){
-                return true;
+        for ($this->usedmisspellings = 0; $this->usedmisspellings <= $wordleveloptions->get_misspellings(); $this->usedmisspellings++){
+            foreach ($this->subcontents as $subcontent){
+                $nextwordleveloptions = clone($wordleveloptions);
+                $nextwordleveloptions->set_misspellings($this->usedmisspellings);
+                if ($subcontent instanceof pmatch_can_match_word &&
+                            $subcontent->match_word($word, $nextwordleveloptions) === true){
+                    return true;
+                }
             }
         }
         return false;
     }
     public function match_phrase($phrase, $phraseleveloptions, $wordleveloptions){
-        foreach ($this->subcontents as $subcontent){
-            if ($subcontent instanceof pmatch_can_match_phrase &&
-                        $subcontent->match_phrase($phrase, $phraseleveloptions, $wordleveloptions) === true){
-                return true;
+        for ($this->usedmisspellings = 0; $this->usedmisspellings <= $wordleveloptions->get_misspellings(); $this->usedmisspellings++){
+            foreach ($this->subcontents as $subcontent){
+                $nextwordleveloptions = clone($wordleveloptions);
+                $nextwordleveloptions->set_misspellings($this->usedmisspellings);
+                if ($subcontent instanceof pmatch_can_match_phrase &&
+                            $subcontent->match_phrase($phrase, $phraseleveloptions, $nextwordleveloptions) === true){
+                    return true;
+                }
             }
         }
         return false;
@@ -394,11 +414,25 @@ class pmatch_matcher_or_list extends pmatch_matcher_item_with_subcontents
  */
 class pmatch_matcher_synonym extends pmatch_matcher_item_with_subcontents
             implements pmatch_can_match_word, pmatch_can_contribute_to_length_of_phrase{
+                protected $usedmisspellings;
+    /**
+     * 
+     * Called after running match_word or match_phrase. This function returns the minimum number of mispellings used to match the student response word to the
+     * pmatch expression.
+     * @return integer the number of misspellings found.
+     */
+    public function get_used_misspellings(){
+        return $this->usedmisspellings;
+    }
     public function match_word($word, $wordleveloptions){
-        foreach ($this->subcontents as $subcontent){
-            if ($subcontent instanceof pmatch_can_match_word &&
-                        $subcontent->match_word($word, $wordleveloptions) === true){
-                return true;
+        for ($this->usedmisspellings = 0; $this->usedmisspellings <= $wordleveloptions->get_misspellings(); $this->usedmisspellings++){
+            foreach ($this->subcontents as $subcontent){
+                $nextwordleveloptions = clone($wordleveloptions);
+                $nextwordleveloptions->set_misspellings($this->usedmisspellings);
+                if ($subcontent instanceof pmatch_can_match_word &&
+                            $subcontent->match_word($word, $nextwordleveloptions) === true){
+                    return true;
+                }
             }
         }
         return false;
@@ -509,29 +543,15 @@ class pmatch_matcher_word_delimiter_proximity extends pmatch_matcher_item
 class pmatch_matcher_word extends pmatch_matcher_item_with_subcontents 
             implements pmatch_can_match_word, pmatch_can_contribute_to_length_of_phrase {
     /**
-     * 
-     * Enter description here ...
      * @var pmatch_word_level_options
      */
     private $wordleveloptions;
-    private $usedmisspellings;
-    /**
-     * 
-     * Called after running match_word. This function returns the minimum number of mispellings used to match the student response word to the
-     * pmatch expression.
-     * @return integer the number of misspellings found.
-     */
-    public function get_used_misspellings(){
-        return $this->usedmisspellings;
-    }
+
     public function match_word($word, $wordleveloptions){
         $this->wordleveloptions = $wordleveloptions;
-        for ($this->usedmisspellings = 0; $this->usedmisspellings <= $this->wordleveloptions->get_misspellings(); $this->usedmisspellings++){
-            if ($this->check_match_branches($word, $this->usedmisspellings)){
-                return true;
-            }
+        if ($this->check_match_branches($word, $this->wordleveloptions->get_misspellings())){
+            return true;
         }
-        $this->usedmisspellings = 0;
         return false;
     }
     /**
