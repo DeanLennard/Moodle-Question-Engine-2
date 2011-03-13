@@ -293,6 +293,17 @@ EOF;
         $this->match(true, '- 50', 'match(- 50)');
         //if an integer is in the expression expect an integer
         $this->match(false, '- 50.333', 'match(- 50)');
+
+        //not sure if this should match
+        $this->match(true, 'abcd ccc ffff', 'match_o(abcd_ffff ccc)');
+
+        $this->match(true, 'one two five', 'match(one_two|[three four] five)');
+        $this->match(true, 'one two five', 'match(one_two|[three four] five)');
+        $this->match(false, 'one four three five', 'match(one_two|[three four] five)');
+        $this->match(false, 'one four five three', 'match(one_two|[three four] five)');
+
+        $this->match(false, 'one four. two.', 'match_w(one_two)');
+        $this->match(true, 'one four two.', 'match_w(one_two)');
     }
 
 

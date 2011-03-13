@@ -29,12 +29,13 @@ interface pmatch_word_delimiter {
      * Check that items separated pmatch expressions are in the right order 
      * and / or proximity to be matched validly. Do not need to check that the two words are not the same.
      * 
-     * @param integer $phrasewordno1
-     * @param integer $phrasewordno2
+     * @param array $phrase the words that are being matched
+     * @param array $wordsmatched index no of words that have been matched so far
+     * @param integer $wordtotry word we want to know if it is in the right position to match
      * @param pmatch_phrase_level_options $phraseleveloptions
      * @return boolean 
      */
-    public function valid_match($phrasewordno1, $phrasewordno2, $phraseleveloptions);
+    public function valid_match($phrase, $wordsmatched, $wordtotry, $phraseleveloptions);
     
     /**
      * 
@@ -201,7 +202,7 @@ abstract class pmatch_matcher_item_with_subcontents extends pmatch_matcher_item{
         }
         //is this a valid item to try to match?
         $shallwetry = ((!count($wordsmatched)) || 
-                    $this->subcontents[$itemtotry - 1]->valid_match($wordsmatched[count($wordsmatched)-1],
+                    $this->subcontents[$itemtotry - 1]->valid_match($phrase, $wordsmatched,
                                                                     $wordtotry, $this->phraseleveloptions))
                     && (!in_array($wordtotry, $wordsmatched, true));
         if ($shallwetry && $this->subcontents[$itemtotry]->match_word($phrase[$wordtotry], $this->wordleveloptions)){
@@ -481,11 +482,12 @@ class pmatch_matcher_phrase extends pmatch_matcher_item_with_subcontents
 }
 class pmatch_matcher_word_delimiter_space extends pmatch_matcher_item
             implements pmatch_word_delimiter, pmatch_can_contribute_to_length_of_phrase {
-    public function valid_match($phrasewordno1, $phrasewordno2, $phraseleveloptions){
+    public function valid_match($phrase, $wordsmatched, $wordtotry, $phraseleveloptions){
+        $lastwordmatched = $wordsmatched[count($wordsmatched) -1];
         if (!$phraseleveloptions->get_allow_any_word_order() && !$phraseleveloptions->get_allow_extra_words()){
-            return ($phrasewordno2 == ($phrasewordno1 + 1));
+            return ($wordtotry == ($lastwordmatched + 1));
         } else if (!$phraseleveloptions->get_allow_any_word_order()){
-            return ($phrasewordno2 > $phrasewordno1);
+            return ($wordtotry > $lastwordmatched);
         } else {
             return true;
         }
@@ -503,11 +505,20 @@ class pmatch_matcher_word_delimiter_space extends pmatch_matcher_item
 }
 class pmatch_matcher_word_delimiter_proximity extends pmatch_matcher_item
             implements pmatch_word_delimiter, pmatch_can_contribute_to_length_of_phrase {
-    public function valid_match($phrasewordno1, $phrasewordno2, $phraseleveloptions){
-        if ($phrasewordno2 < $phrasewordno1){
+    public function valid_match($phrase, $wordsmatched, $wordtotry, $phraseleveloptions){
+        $lastwordmatched = $wordsmatched[count($wordsmatched) -1];
+        if ($wordtotry < $lastwordmatched){
             return false;
         }
-        return ($phrasewordno2 - $phrasewordno1) <= ($phraseleveloptions->get_allow_proximity_of() + 1);
+        if (($wordtotry - $lastwordmatched) > ($phraseleveloptions->get_allow_proximity_of() + 1)){
+            return false;
+        }
+        for ($wordno = $lastwordmatched; $wordno < $wordtotry; $wordno++){
+            if (preg_match('!\.$!', $phrase[$wordno])){
+                return false;
+            }
+        }
+        return true;
     }
     public function contribution_to_length_of_phrase_can_try($phraseleveloptions){
         if ($phraseleveloptions->get_allow_extra_words()){
@@ -585,6 +596,7 @@ class pmatch_matcher_word extends pmatch_matcher_item_with_subcontents
         return $adjustedwordleveloptions;
     }
     public function match_word($word, $wordleveloptions){
+        $word = rtrim($word, '.');
         $this->wordleveloptions = $this->check_word_level_options($wordleveloptions);
         if ($this->check_match_branches($word, $this->wordleveloptions->get_misspellings())){
             return true;
