@@ -134,7 +134,7 @@ class pmatch_expression {
      * @param string $string the string to match against.
      * @param pmatch_options $options the options to use.
      */
-    public function __construct($expression, $options){
+    public function __construct($expression, $options = null){
         if (!is_null($options)){
             $this->options = $options;
         } else {
@@ -195,7 +195,6 @@ class pmatch_expression {
      * @return string a nicely formatted version of the expression.
      */
     public function get_formatted_expression_string(){
-        //TODO need to implement this
-        return '';
+        return $this->interpreter->get_formatted_expression_string();
     }
 }

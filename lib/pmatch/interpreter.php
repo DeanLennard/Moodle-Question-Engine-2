@@ -96,8 +96,15 @@ abstract class pmatch_interpreter_item{
     public function get_code_fragment(){
         return $this->codefragment;
     }
+    public function get_formatted_expression_string($indentlevel = 0){
+        return $this->codefragment;
+    }
+    protected function indent($indentlevel){
+        return str_repeat('    ', $indentlevel);
+    }
 }
 abstract class pmatch_interpreter_item_with_subcontents extends pmatch_interpreter_item{
+
 
     protected $subcontents = array();
     /**
@@ -209,6 +216,13 @@ abstract class pmatch_interpreter_item_with_subcontents extends pmatch_interpret
     public function get_subcontents(){
         return $this->subcontents;
     }
+    public function get_formatted_expression_string($indentlevel = 0){
+        $string = '';
+        foreach ($this->subcontents as $subcontent){
+            $string .= $subcontent->get_formatted_expression_string($indentlevel+1);
+        }
+        return $string;
+    }
 }
 
 
@@ -252,6 +266,16 @@ abstract class pmatch_interpreter_item_with_enclosed_subcontents extends pmatch_
     protected function interpret_subpattern_in_opening($subpattern){
         return true;
     }
+    public function get_formatted_expression_string($indentlevel = 0){
+        $string = $this->indent($indentlevel). $this->formatted_opening()." (\n";
+        $string .= parent::get_formatted_expression_string($indentlevel);
+        $string .= $this->indent($indentlevel). ")\n";
+        return $string;
+    }
+    protected function formatted_opening(){
+        return '';//overridden in sub classes
+    }
+    
 }
 class pmatch_interpreter_whole_expression extends pmatch_interpreter_item_with_subcontents{
 
@@ -261,6 +285,9 @@ class pmatch_interpreter_whole_expression extends pmatch_interpreter_item_with_s
     }
 
     protected $limitsubcontents = 1;
+    public function get_formatted_expression_string($indentlevel = 0){
+        return $this->subcontents[0]->get_formatted_expression_string($indentlevel);
+    }
 }
 class pmatch_interpreter_not extends pmatch_interpreter_item_with_enclosed_subcontents{
 
@@ -273,6 +300,9 @@ class pmatch_interpreter_not extends pmatch_interpreter_item_with_enclosed_subco
     }
 
     protected $limitsubcontents = 1;
+    protected function formatted_opening(){
+        return 'not';
+    }
 }
 class pmatch_interpreter_match extends pmatch_interpreter_item_with_enclosed_subcontents{
 
@@ -288,7 +318,9 @@ class pmatch_interpreter_match_any extends pmatch_interpreter_match{
     protected function next_possible_subcontent($foundsofar){
         return array('match_any', 'match_all', 'match_options', 'not');
     }
-
+    protected function formatted_opening(){
+        return 'match_any';
+    }
 }
 
 class pmatch_interpreter_match_all extends pmatch_interpreter_match{
@@ -297,6 +329,9 @@ class pmatch_interpreter_match_all extends pmatch_interpreter_match{
     }
     protected function next_possible_subcontent($foundsofar){
         return array('match_any', 'match_all', 'match_options', 'not');
+    }
+    protected function formatted_opening(){
+        return 'match_all';
     }
 }
 class pmatch_word_level_options {
@@ -355,7 +390,32 @@ class pmatch_word_level_options {
     public function get_misspellings(){
         return $this->misspellings;
     }
-    
+    public function get_options_as_string(){
+        $string = '';
+        if ($this->misspellingallowreplacechar && $this->misspellingallowextrachar && $this->misspellingallowfewerchar && $this->misspellingallowtransposetwochars){
+            $string .= 'm';
+            if ($this->misspellings == 2){
+                $string .= '2';
+            }
+        } else if ($this->misspellingallowreplacechar || $this->misspellingallowextrachar || $this->misspellingallowfewerchar || $this->misspellingallowtransposetwochars){
+            $string .= 'm';
+            if ($this->misspellingallowreplacechar){
+                $string .= 'r';
+            }
+            if ($this->misspellingallowtransposetwochars){
+                $string .= 't';
+            }
+            if ($this->misspellingallowextrachar){
+                $string .= 'x';
+            }
+            if ($this->misspellingallowfewerchar){
+                $string .= 'f';
+            }
+        } else if ($this->allowextracharacters) {
+            $string .= 'c';
+        }
+        return $string;
+    }
 }
 class pmatch_phrase_level_options {
     protected $allowproximityof;
@@ -388,6 +448,19 @@ class pmatch_phrase_level_options {
     }
     public function set_allow_extra_words($allowextrawords){
         $this->allowextrawords = $allowextrawords;
+    }
+    public function get_options_as_string(){
+        $string = '';
+        if ($this->allowanywordorder){
+            $string .= 'o';
+        }
+        if ($this->allowextrawords){
+            $string .= 'w';
+        }
+        if ($this->allowproximityof != 2){
+            $string .= 'p'.$this->allowproximityof;
+        }
+        return $string;
     }
 }
 class pmatch_interpreter_match_options extends pmatch_interpreter_match{
@@ -503,6 +576,22 @@ class pmatch_interpreter_match_options extends pmatch_interpreter_match{
                 return array('word_delimiter_space', 'word_delimiter_proximity');
         }
     }
+    public function get_formatted_expression_string($indentlevel = 0){
+        $string = $this->indent($indentlevel);
+        $string .= $this->formatted_opening();
+        $string .= ' (';
+        foreach ($this->subcontents as $subcontent){
+            $string .= $subcontent->get_formatted_expression_string($indentlevel+1);
+        }
+        $string .= ")\n";
+        return $string;
+    }
+    protected function formatted_opening(){
+        $string = 'match_';
+        $string .= $this->wordleveloptions->get_options_as_string();
+        $string .= $this->phraseleveloptions->get_options_as_string();
+        return $string;
+    }
 }
 class pmatch_interpreter_or_list extends pmatch_interpreter_item_with_subcontents{
     protected function next_possible_subcontent($foundsofar){
@@ -548,6 +637,16 @@ class pmatch_interpreter_or_list_phrase extends pmatch_interpreter_item_with_enc
     }
     
     protected $limitsubcontents = 1;
+    
+    public function get_formatted_expression_string($indentlevel = 0){
+        $string = '[';
+        foreach ($this->subcontents as $subcontent){
+            $string .= $subcontent->get_formatted_expression_string($indentlevel+1);
+        }
+        $string .= ']';
+        return $string;
+    }
+    
 }
 
 class pmatch_interpreter_phrase extends pmatch_interpreter_item_with_subcontents{

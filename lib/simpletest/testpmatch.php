@@ -304,6 +304,24 @@ EOF;
 
         $this->match(false, 'one four. two.', 'match_w(one_two)');
         $this->match(true, 'one four two.', 'match_w(one_two)');
+        
+        $expression = new pmatch_expression('match_all(match_any(not(match_cow(one_two))match_mfw(three|[four five]))match_any(match_mrw(six|nine nine)match_m2w(seven|[eight ten])))');
+        $formattedexpression = <<<EOF
+match_all (
+    match_any (
+        not (
+            match_cow (one_two)
+        )
+        match_mfw (three|[four five])
+    )
+    match_any (
+        match_mrw (six|nine nine)
+        match_m2w (seven|[eight ten])
+    )
+)
+
+EOF;
+        $this->assertEqual($expression->get_formatted_expression_string(), $formattedexpression);
     }
 
 
