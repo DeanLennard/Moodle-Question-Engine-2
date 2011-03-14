@@ -23,7 +23,8 @@
  * @license http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 
-require_once($CFG->libdir.'/pmatch/matcher.php');
+require_once($CFG->dirroot . '/question/type/pmatch/pmatch/matcher.php');
+
 abstract class pmatch_interpreter_item{
     protected $interpretererrormessage;
     public $codefragment;
@@ -83,7 +84,7 @@ abstract class pmatch_interpreter_item{
         }
     }
     public function set_error_message($errormessage, $codefragment){
-        $this->interpretererrormessage = get_string('ie_'.$errormessage, 'pmatch', $codefragment);
+        $this->interpretererrormessage = get_string('ie_'.$errormessage, 'qtype_pmatch', $codefragment);
     }
     public function get_matcher($ignorecase){
         $thistypename = $this->get_type_name_of_interpreter_object($this);

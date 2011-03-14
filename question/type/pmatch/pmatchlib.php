@@ -23,7 +23,7 @@
  * @license http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 
-require_once($CFG->libdir.'/pmatch/interpreter.php');
+require_once($CFG->dirroot . '/question/type/pmatch/pmatch/interpreter.php');
 
 /**
  * Options that control the overall way the matching is done.

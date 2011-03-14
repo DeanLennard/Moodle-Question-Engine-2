@@ -25,7 +25,7 @@
  */
 
 
-require_once($CFG->libdir . '/pmatchlib.php');
+require_once($CFG->dirroot . '/question/type/pmatch/pmatchlib.php');
 
 class pmatch_test extends UnitTestCase {
     protected function match($string, $expression, $options = null) {
@@ -40,11 +40,11 @@ class pmatch_test extends UnitTestCase {
     }
 
     public function test_pmatch_error() {
-        $this->assertEqual($this->error_message('match_mow([tom maud]|[sid jane]'), get_string('ie_missingclosingbracket', 'pmatch', 'match_mow([tom maud]|[sid jane]')); // No closing bracket.
-        $this->assertEqual($this->error_message('match_mow()'), get_string('ie_unrecognisedsubcontents', 'pmatch', 'match_mow()')); // No contents.
-        $this->assertEqual($this->error_message('match_mow([tom maud]|)'), get_string('ie_lastsubcontenttypeorcharacter', 'pmatch', '[tom maud]|')); // ends in an or character.
-        $this->assertEqual($this->error_message('match_mow([tom maud] )'), get_string('ie_lastsubcontenttypeworddelimiter', 'pmatch', 'match_mow([tom maud] )')); // ends in a space.
-        $this->assertEqual($this->error_message('match_mow([tom maud]_)'), get_string('ie_lastsubcontenttypeworddelimiter', 'pmatch', 'match_mow([tom maud]_)')); // ends in a proximity delimiter.
+        $this->assertEqual($this->error_message('match_mow([tom maud]|[sid jane]'), get_string('ie_missingclosingbracket', 'qtype_pmatch', 'match_mow([tom maud]|[sid jane]')); // No closing bracket.
+        $this->assertEqual($this->error_message('match_mow()'), get_string('ie_unrecognisedsubcontents', 'qtype_pmatch', 'match_mow()')); // No contents.
+        $this->assertEqual($this->error_message('match_mow([tom maud]|)'), get_string('ie_lastsubcontenttypeorcharacter', 'qtype_pmatch', '[tom maud]|')); // ends in an or character.
+        $this->assertEqual($this->error_message('match_mow([tom maud] )'), get_string('ie_lastsubcontenttypeworddelimiter', 'qtype_pmatch', 'match_mow([tom maud] )')); // ends in a space.
+        $this->assertEqual($this->error_message('match_mow([tom maud]_)'), get_string('ie_lastsubcontenttypeworddelimiter', 'qtype_pmatch', 'match_mow([tom maud]_)')); // ends in a proximity delimiter.
     }
 
     public function test_pmatch_matching() {
