@@ -200,7 +200,7 @@ class pmatch_expression {
      */
     public function get_formatted_expression_string(){
         if (!$this->is_valid()){
-            throw new coding_exception('Oops. You called matches for an expression that is not valid. You should call is_valid first.');
+            throw new coding_exception('Oops. You called get_formatted_expression_string for an expression that is not valid. You should call is_valid first.');
             return false;
         }
         return $this->interpreter->get_formatted_expression_string();

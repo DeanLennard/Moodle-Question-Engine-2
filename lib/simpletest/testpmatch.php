@@ -191,6 +191,7 @@ class pmatch_test extends UnitTestCase {
         $this->assertFalse($this->match('abbcdg', 'match_m(abcd)'));
 
         //allow any two mispelling
+        //default to one if there are less than 8 chars in word pattern
         $this->assertTrue($this->match('abcd', 'match_m2(abcd)'));
         $this->assertTrue($this->match('abc', 'match_m2(abcd)'));
         $this->assertTrue($this->match('acbd', 'match_m2(abcd)'));
