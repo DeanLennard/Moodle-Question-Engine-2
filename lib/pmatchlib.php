@@ -157,6 +157,10 @@ class pmatch_expression {
      * @return boolean whether this string matches the expression.
      */
     public function matches(pmatch_parsed_string $parsedstring){
+        if (!$this->is_valid()){
+            throw new coding_exception('Oops. You called matches for an expression that is not valid. You should call is_valid first.');
+            return false;
+        }
         $matcher = $this->interpreter->get_matcher($this->options->ignorecase);
         return $matcher->match_whole_expression($parsedstring->get_words());
     }
@@ -195,6 +199,10 @@ class pmatch_expression {
      * @return string a nicely formatted version of the expression.
      */
     public function get_formatted_expression_string(){
+        if (!$this->is_valid()){
+            throw new coding_exception('Oops. You called matches for an expression that is not valid. You should call is_valid first.');
+            return false;
+        }
         return $this->interpreter->get_formatted_expression_string();
     }
 }
