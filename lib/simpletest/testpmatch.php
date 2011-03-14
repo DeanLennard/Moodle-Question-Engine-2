@@ -268,7 +268,8 @@ EOF;
         //when words are shorter than 8 characters, revert to allow one spelling mistake per word
         $this->assertTrue($this->match('dogs are bitter than cuts', 'match_m2(dogs are better than cats)'));
         $this->assertTrue($this->match('digs are bitter than cuts', 'match_m2(dogs are better than cats)'));
-
+        $this->assertFalse($this->match('diigs are bitter than cuts', 'match_m2(dogs are better than cats)'));
+        
         //try to trip up matcher, can match first to first with two spelling mistakes
         //but then will fail when trying to match second to second which will also have two mistakes 
         //but should match first word to second and second to first with 2 mistakes total
@@ -318,7 +319,74 @@ match_all (
 
 EOF;
         $this->assertEqual($expression->get_formatted_expression_string(), $formattedexpression);
+        //when formatting phrase and word level options in expression they are simplied 
+        //and arranged into a standard order.
+        $expression = new pmatch_expression('match_mfmtxr(three|[four five])');
+        $this->assertEqual($expression->get_formatted_expression_string(), "match_m (three|[four five])\n");
+        $expression = new pmatch_expression('match_mfmtxrow(three|[four five])');
+        $this->assertEqual($expression->get_formatted_expression_string(), "match_mow (three|[four five])\n");
+        $expression = new pmatch_expression('match_mfmtxr2(three|[four five])');
+        $this->assertEqual($expression->get_formatted_expression_string(), "match_m2 (three|[four five])\n");
+        $expression = new pmatch_expression('match_mtxrow(three|[four five])');
+        $this->assertEqual($expression->get_formatted_expression_string(), "match_mrtxow (three|[four five])\n");
+        $expression = new pmatch_expression('match_all(match_any(not(match_cow(one_two))match_mfw(three|[four five]))match_any(match_mrw(six|nine nine)match_m2w(seven|[eight ten])))');
 
+        $expressionstr = 'match_all(match_any(not(match_c(a))match_c(b))match_all(match_all(match_any(match_c(c)match_c(d))'.
+                        'match_any(match_c(e)match_c(f))match_all(match_c(g)match_c(h)))not(match_any(match_any(match_c(i)match_c(j))'.
+                        'match_any(match_c(k)match_c(l))match_all(match_c(m)match_c(n))))))';
+        $expression = new pmatch_expression($expressionstr);
+        $formattedexpression = <<<EOF
+match_all (
+    match_any (
+        not (
+            match_c (a)
+        )
+        match_c (b)
+    )
+    match_all (
+        match_all (
+            match_any (
+                match_c (c)
+                match_c (d)
+            )
+            match_any (
+                match_c (e)
+                match_c (f)
+            )
+            match_all (
+                match_c (g)
+                match_c (h)
+            )
+        )
+        not (
+            match_any (
+                match_any (
+                    match_c (i)
+                    match_c (j)
+                )
+                match_any (
+                    match_c (k)
+                    match_c (l)
+                )
+                match_all (
+                    match_c (m)
+                    match_c (n)
+                )
+            )
+        )
+    )
+)
+
+EOF;
+
+        $this->assertEqual($expression->get_formatted_expression_string(), $formattedexpression);
+        //notice match_c (m) will match any one word string with an 'm' in it.
+        $this->assertTrue($this->match('cegh', $expressionstr));
+        $this->assertFalse($this->match('acegh', $expressionstr));
+        $this->assertTrue($this->match('abcegh', $expressionstr));
+        $this->assertFalse($this->match('abceghi', $expressionstr));
+        $this->assertTrue($this->match('abceghm', $expressionstr));
+        $this->assertFalse($this->match('abceghmn', $expressionstr));
     }
 
 
