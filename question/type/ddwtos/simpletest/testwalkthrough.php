@@ -62,7 +62,7 @@ class qtype_ddwtos_walkthrough_test extends qbehaviour_walkthrough_test_base {
     public function test_interactive_behaviour() {
 
         // Create a drag-and-drop question.
-        $dd = qtype_ddwtos_test_helper::make_a_ddwtos_question();
+        $dd = test_question_maker::make_question('ddwtos');
         $dd->hints = array(
             new question_hint_with_parts(13, 'This is the first hint.', FORMAT_HTML, false, false),
             new question_hint_with_parts(14, 'This is the second hint.', FORMAT_HTML, true, true),
@@ -164,7 +164,7 @@ class qtype_ddwtos_walkthrough_test extends qbehaviour_walkthrough_test_base {
     public function test_deferred_feedback() {
 
         // Create a drag-and-drop question.
-        $dd = qtype_ddwtos_test_helper::make_a_ddwtos_question();
+        $dd = test_question_maker::make_question('ddwtos');
         $dd->shufflechoices = false;
         $this->start_attempt_at_question($dd, 'deferredfeedback', 3);
 
@@ -238,7 +238,7 @@ class qtype_ddwtos_walkthrough_test extends qbehaviour_walkthrough_test_base {
     public function test_deferred_feedback_unanswered() {
 
         // Create a drag-and-drop question.
-        $dd = qtype_ddwtos_test_helper::make_a_ddwtos_question();
+        $dd = test_question_maker::make_question('ddwtos');
         $dd->shufflechoices = false;
         $this->start_attempt_at_question($dd, 'deferredfeedback', 3);
 
@@ -288,7 +288,7 @@ class qtype_ddwtos_walkthrough_test extends qbehaviour_walkthrough_test_base {
     public function test_deferred_feedback_partial_answer() {
 
         // Create a drag-and-drop question.
-        $dd = qtype_ddwtos_test_helper::make_a_ddwtos_question();
+        $dd = test_question_maker::make_question('ddwtos');
         $dd->shufflechoices = false;
         $this->start_attempt_at_question($dd, 'deferredfeedback', 3);
 
@@ -337,7 +337,7 @@ class qtype_ddwtos_walkthrough_test extends qbehaviour_walkthrough_test_base {
     public function test_interactive_grading() {
 
         // Create a drag-and-drop question.
-        $dd = qtype_ddwtos_test_helper::make_a_ddwtos_question();
+        $dd = test_question_maker::make_question('ddwtos');
         $dd->hints = array(
             new question_hint_with_parts(1, 'This is the first hint.', FORMAT_MOODLE, true, true),
             new question_hint_with_parts(2, 'This is the second hint.', FORMAT_MOODLE, true, true),
@@ -474,7 +474,7 @@ class qtype_ddwtos_walkthrough_test extends qbehaviour_walkthrough_test_base {
     public function test_interactive_correct_no_submit() {
 
         // Create a drag-and-drop question.
-        $dd = qtype_ddwtos_test_helper::make_a_ddwtos_question();
+        $dd = test_question_maker::make_question('ddwtos');
         $dd->hints = array(
             new question_hint_with_parts(23, 'This is the first hint.', FORMAT_MOODLE, false, false),
             new question_hint_with_parts(24, 'This is the second hint.', FORMAT_MOODLE, true, true),
@@ -525,7 +525,7 @@ class qtype_ddwtos_walkthrough_test extends qbehaviour_walkthrough_test_base {
     public function test_interactive_partial_no_submit() {
 
         // Create a drag-and-drop question.
-        $dd = qtype_ddwtos_test_helper::make_a_ddwtos_question();
+        $dd = test_question_maker::make_question('ddwtos');
         $dd->hints = array(
             new question_hint_with_parts(23, 'This is the first hint.', FORMAT_MOODLE, false, false),
             new question_hint_with_parts(24, 'This is the second hint.', FORMAT_MOODLE, true, true),
@@ -576,7 +576,7 @@ class qtype_ddwtos_walkthrough_test extends qbehaviour_walkthrough_test_base {
     public function test_interactive_no_right_clears() {
 
         // Create a drag-and-drop question.
-        $dd = qtype_ddwtos_test_helper::make_a_ddwtos_question();
+        $dd = test_question_maker::make_question('ddwtos');
         $dd->hints = array(
             new question_hint_with_parts(23, 'This is the first hint.', FORMAT_MOODLE, false, true),
             new question_hint_with_parts(24, 'This is the second hint.', FORMAT_MOODLE, true, true),
@@ -637,7 +637,7 @@ class qtype_ddwtos_walkthrough_test extends qbehaviour_walkthrough_test_base {
     public function test_display_of_right_answer_when_shuffled() {
 
         // Create a drag-and-drop question.
-        $dd = qtype_ddwtos_test_helper::make_a_ddwtos_question();
+        $dd = test_question_maker::make_question('ddwtos');
         $this->start_attempt_at_question($dd, 'deferredfeedback', 3);
 
         // Check the initial state.
