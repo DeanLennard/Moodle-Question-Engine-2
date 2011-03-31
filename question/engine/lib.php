@@ -98,19 +98,16 @@ abstract class question_engine {
      */
     public static function delete_questions_usage_by_activity($qubaid) {
         global $CFG;
-        self::delete_questions_usage_by_activities('{question_usages}.id = :qubaid', array('qubaid' => $qubaid));
+        self::delete_questions_usage_by_activities(new qubaid_list(array($qubaid)));
     }
 
     /**
-     * Delete {@link question_usage_by_activity}s from the database that match
-     * an arbitrary SQL where clause.
-     * @param string $where a where clause. Becuase of MySQL limitations, you
-     *      must refer to {question_usages}.id in full like that.
-     * @param array $params values to substitute for placeholders in $where.
+     * Delete {@link question_usage_by_activity}s from the database.
+     * @param qubaid_condition $qubaids identifies which questions usages to delete.
      */
-    public static function delete_questions_usage_by_activities($where, $params) {
+    public static function delete_questions_usage_by_activities(qubaid_condition $qubaids) {
         $dm = new question_engine_data_mapper();
-        $dm->delete_questions_usage_by_activities($where, $params);
+        $dm->delete_questions_usage_by_activities($qubaids);
     }
 
     /**
@@ -327,6 +324,9 @@ abstract class question_engine {
         return question_display_options::get_dp_options();
     }
 
+    /**
+     * Initialise the JavaScript required on pages where questions will be displayed.
+     */
     public static function initialise_js() {
         return question_flags::initialise_js();
     }
@@ -465,6 +465,11 @@ class question_display_options {
      * {@link question_display_options::VISIBLE}
      */
     public $history = self::HIDDEN;
+
+    /**
+     * @var int the context the attempt being output belongs to.
+     */
+    public $context;
 
     /**
      * Set all the feedback-related fields {@link $feedback}, {@link generalfeedback},
@@ -916,6 +921,7 @@ class question_usage_by_activity {
      * @return string HTML fragment representing the question.
      */
     public function render_question($slot, $options, $number = null) {
+        $options->context = $this->context;
         return $this->get_question_attempt($slot)->render($options, $number);
     }
 
@@ -926,6 +932,7 @@ class question_usage_by_activity {
      * @return string HTML fragment.
      */
     public function render_question_head_html($slot) {
+        $options->context = $this->context;
         return $this->get_question_attempt($slot)->render_head_html();
     }
 
@@ -941,6 +948,7 @@ class question_usage_by_activity {
      * @return string HTML fragment representing the question.
      */
     public function render_question_at_step($slot, $seq, $options, $number = null) {
+        $options->context = $this->context;
         return $this->get_question_attempt($slot)->render_at_step($seq, $options, $number, $this->preferredbehaviour);
     }
 
@@ -1086,7 +1094,7 @@ class question_usage_by_activity {
      */
     public function validate_sequence_number($slot, $postdata = null) {
         $qa = $this->get_question_attempt($slot);
-        $sequencecheck = question_attempt::get_submitted_var(
+        $sequencecheck = $qa->get_submitted_var(
                 $qa->get_control_field_name('sequencecheck'), PARAM_INT, $postdata);
         if (is_null($sequencecheck)) {
             return false;
@@ -1105,7 +1113,7 @@ class question_usage_by_activity {
      */
     public function update_question_flags($postdata = null) {
         foreach ($this->questionattempts as $qa) {
-            $flagged = question_attempt::get_submitted_var(
+            $flagged = $qa->get_submitted_var(
                     $qa->get_flag_field_name(), PARAM_BOOL, $postdata);
             if (!is_null($flagged) && $flagged != $qa->is_flagged()) {
                 $qa->set_flagged($flagged);
@@ -1332,6 +1340,18 @@ class question_attempt {
      * converts '' to 0.
      */
     const PARAM_MARK = 'parammark';
+
+    /**
+     * @var string special value to indicate a response variable that is uploaded
+     * files.
+     */
+    const PARAM_FILES = 'paramfiles';
+
+    /**
+     * @var string special value to indicate a response variable that is uploaded
+     * files.
+     */
+    const PARAM_CLEANHTML_FILES = 'paramcleanhtmlfiles';
 
     /** @var integer if this attempts is stored in the question_attempts table, the id of that row. */
     protected $id = null;
@@ -1648,6 +1668,21 @@ class question_attempt {
     }
 
     /**
+     * Get the last step with a particular question type varialbe set.
+     * @param string $name the name of the variable to get.
+     * @return question_attempt_step the last step, or a step with no variables
+     * if there was not a real step.
+     */
+    public function get_last_step_with_qt_var($name) {
+        foreach ($this->get_reverse_step_iterator() as $step) {
+            if ($step->has_qt_var($name)) {
+                return $step;
+            }
+        }
+        return new question_attempt_step_read_only();
+    }
+
+    /**
      * Get the latest value of a particular question type variable. That is, get
      * the value from the latest step that has it set. Return null if it is not
      * set in any step.
@@ -1658,12 +1693,67 @@ class question_attempt {
      * @return mixed string value, or $default if it has never been set.
      */
     public function get_last_qt_var($name, $default = null) {
+        $step = $this->get_last_step_with_qt_var($name);
+        if ($step->has_qt_var($name)) {
+            return $step->get_qt_var($name);
+        } else {
+            return $default;
+        }
+    }
+
+    /**
+     * Get the latest set of files for a particular question type variable of
+     * type question_attempt::PARAM_FILES.
+     *
+     * @param string $name the name of the associated variable.
+     * @return array of {@link stored_files}.
+     */
+    public function get_last_qt_files($name, $contextid) {
         foreach ($this->get_reverse_step_iterator() as $step) {
             if ($step->has_qt_var($name)) {
-                return $step->get_qt_var($name);
+                return $step->get_qt_files($name, $contextid);
             }
         }
-        return $default;
+        return array();
+    }
+
+    /**
+     * Get the URL of a file that belongs to a response variable of this
+     * question_attempt.
+     * @param stored_file $file the file to link to.
+     * @return string the URL of that file.
+     */
+    public function get_response_file_url(stored_file $file) {
+        return file_encode_url(new moodle_url('/pluginfile.php'), '/' . implode('/', array(
+                $file->get_contextid(),
+                $file->get_component(),
+                $file->get_filearea(),
+                $this->usageid,
+                $this->slot,
+                $file->get_itemid())) .
+                $file->get_filepath() . $file->get_filename(), true);
+    }
+
+    /**
+     * Prepare a draft file are for the files belonging the a response variable
+     * of this question attempt. The draft area is populated with the files from
+     * the most recent step having files.
+     *
+     * @param string $name the variable name the files belong to.
+     * @param int $contextid the id of the context the quba belongs to.
+     * @return int the draft itemid.
+     */
+    public function prepare_response_files_draft_itemid($name, $contextid) {
+        foreach ($this->get_reverse_step_iterator() as $step) {
+            if ($step->has_qt_var($name)) {
+                return $step->prepare_response_files_draft_itemid($name, $contextid);
+            }
+        }
+
+        // No files yet.
+        $draftid = 0; // Will be filled in by file_prepare_draft_area.
+        file_prepare_draft_area($draftid, $contextid, 'question', 'response_' . $name, null);
+        return $draftid;
     }
 
     /**
@@ -1741,7 +1831,7 @@ class question_attempt {
      * {@link get_fraction()} * {@link get_max_mark()}.
      */
     public function get_current_manual_mark() {
-        $mark = self::get_submitted_var($this->get_behaviour_field_name('mark'), question_attempt::PARAM_MARK);
+        $mark = $this->get_submitted_var($this->get_behaviour_field_name('mark'), question_attempt::PARAM_MARK);
         if (is_null($mark)) {
             return $this->get_mark();
         } else {
@@ -1822,17 +1912,43 @@ class question_attempt {
     }
 
     /**
+     * Helper function used by {@link rewrite_pluginfile_urls()} and
+     * {@link rewrite_response_pluginfile_urls()}.
+     * @return array ids that need to go into the file paths.
+     */
+    protected function extra_file_path_components() {
+        return array($this->get_usage_id(), $this->get_slot());
+    }
+
+    /**
      * Calls {@link question_rewrite_question_urls()} with appropriate parameters
      * for content belonging to this question.
      * @param string $text the content to output.
      * @param string $component the component name (normally 'question' or 'qtype_...')
      * @param string $filearea the name of the file area.
      * @param int $itemid the item id.
+     * @return srting the content with the URLs rewritten.
      */
     public function rewrite_pluginfile_urls($text, $component, $filearea, $itemid) {
-        return question_rewrite_question_urls($text,
-                'pluginfile.php', $this->question->contextid, $component, $filearea,
-                array($this->get_usage_id(), $this->get_slot()), $itemid);
+        return question_rewrite_question_urls($text, 'pluginfile.php',
+                $this->question->contextid, $component, $filearea,
+                $this->extra_file_path_components(), $itemid);
+    }
+
+    /**
+     * Calls {@link question_rewrite_question_urls()} with appropriate parameters
+     * for content belonging to responses to this question.
+     *
+     * @param string $text the text to update the URLs in.
+     * @param int $contextid the id of the context the quba belongs to.
+     * @param string $name the variable name the files belong to.
+     * @param question_attempt_step $step the step the response is coming from.
+     * @return srting the content with the URLs rewritten.
+     */
+    public function rewrite_response_pluginfile_urls($text, $contextid, $name,
+            question_attempt_step $step) {
+        return $step->rewrite_response_pluginfile_urls($text, $contextid, $name,
+                $this->extra_file_path_components());
     }
 
     /**
@@ -1974,33 +2090,66 @@ class question_attempt {
      * {@link optional_param()}, except that the results is returned without
      * slashes.
      * @param string $name the paramter name.
-     * @param int $type one of the PARAM_... constants.
+     * @param int $type one of the standard PARAM_... constants, or one of the
+     *      special extra constands defined by this class.
      * @param array $postdata (optional, only inteded for testing use) take the
      *      data from this array, instead of from $_POST.
      * @return mixed the requested value.
      */
-    public static function get_submitted_var($name, $type, $postdata = null) {
-        // Special case to work around PARAM_NUMBER converting '' to 0.
-        if ($type == self::PARAM_MARK) {
-            $mark = self::get_submitted_var($name, PARAM_RAW_TRIMMED, $postdata);
-            if ($mark === '') {
-                return $mark;
-            } else {
-                return self::get_submitted_var($name, PARAM_NUMBER, $postdata);
-            }
+    public function get_submitted_var($name, $type, $postdata = null) {
+        switch ($type) {
+            case self::PARAM_MARK:
+                // Special case to work around PARAM_NUMBER converting '' to 0.
+                $mark = $this->get_submitted_var($name, PARAM_RAW_TRIMMED, $postdata);
+                if ($mark === '') {
+                    return $mark;
+                } else {
+                    return $this->get_submitted_var($name, PARAM_NUMBER, $postdata);
+                }
+
+            case self::PARAM_FILES:
+                return $this->process_response_files($name, $name, $postdata);
+
+            case self::PARAM_CLEANHTML_FILES:
+                $var = $this->get_submitted_var($name, PARAM_CLEANHTML, $postdata);
+                return $this->process_response_files($name, $name . ':itemid', $postdata, $var);
+
+            default:
+                if (is_null($postdata)) {
+                    $var = optional_param($name, null, $type);
+                } else if (array_key_exists($name, $postdata)) {
+                    $var = clean_param($postdata[$name], $type);
+                } else {
+                    $var = null;
+                }
+
+                return $var;
+        }
+    }
+
+    /**
+     * Handle a submitted variable representing uploaded files.
+     * @param string $name the field name.
+     * @param string $draftidname the field name holding the draft file area id.
+     * @param array $postdata (optional, only inteded for testing use) take the
+     *      data from this array, instead of from $_POST. At the moment, this
+     *      behaves as if there were no files.
+     * @param string $text optional reponse text.
+     * @return question_file_saver that can be used to save the files later.
+     */
+    protected function process_response_files($name, $draftidname, $postdata = null, $text = null) {
+        if ($postdata) {
+            // There can be no files with test data (at the moment).
+            return null;
         }
 
-        if (is_null($postdata)) {
-            $var = optional_param($name, null, $type);
-        } else if (array_key_exists($name, $postdata)) {
-            $var = clean_param($postdata[$name], $type);
-        } else {
-            $var = null;
+        $draftitemid = file_get_submitted_draft_itemid($draftidname);
+        if (!$draftitemid) {
+            return null;
         }
-        if (is_string($var)) {
-            $var = stripslashes($var);
-        }
-        return $var;
+
+        return new question_file_saver($draftitemid, 'question', 'response_' .
+                str_replace($this->get_field_prefix(), '', $name), $text);
     }
 
     /**
@@ -2012,7 +2161,7 @@ class question_attempt {
     protected function get_expected_data($expected, $postdata, $extraprefix) {
         $submitteddata = array();
         foreach ($expected as $name => $type) {
-            $value = self::get_submitted_var(
+            $value = $this->get_submitted_var(
                     $this->get_field_prefix() . $extraprefix . $name, $type, $postdata);
             if (!is_null($value)) {
                 $submitteddata[$extraprefix . $name] = $value;
@@ -2488,6 +2637,9 @@ class question_attempt_step {
     /** @var array name => value pairs. The submitted data. */
     private $data;
 
+    /** @var array name => array of {@link stored_file}s. Caches the contents of file areas. */
+    private $files = array();
+
     /**
      * You should not need to call this constructor in your own code. Steps are
      * normally created by {@link question_attempt} methods like
@@ -2583,6 +2735,77 @@ class question_attempt_step {
     }
 
     /**
+     * Get the latest set of files for a particular question type variable of
+     * type question_attempt::PARAM_FILES.
+     *
+     * @param string $name the name of the associated variable.
+     * @return array of {@link stored_files}.
+     */
+    public function get_qt_files($name, $contextid) {
+        if (array_key_exists($name, $this->files)) {
+            return $this->files[$name];
+        }
+
+        if (!$this->has_qt_var($name)) {
+            $this->files[$name] = array();
+            return array();
+        }
+
+        $fs = get_file_storage();
+        $this->files[$name] = $fs->get_area_files($contextid, 'question',
+                'response_' . $name, $this->id, 'sortorder', false);
+
+        return $this->files[$name];
+    }
+
+    /**
+     * Prepare a draft file are for the files belonging the a response variable
+     * of this step.
+     *
+     * @param string $name the variable name the files belong to.
+     * @param int $contextid the id of the context the quba belongs to.
+     * @return int the draft itemid.
+     */
+    public function prepare_response_files_draft_itemid($name, $contextid) {
+        list($draftid, $notused) = $this->prepare_response_files_draft_itemid_with_text(
+                $name, $contextid, null);
+        return $draftid;
+    }
+
+    /**
+     * Prepare a draft file are for the files belonging the a response variable
+     * of this step, while rewriting the URLs in some text.
+     *
+     * @param string $name the variable name the files belong to.
+     * @param int $contextid the id of the context the quba belongs to.
+     * @param string $text the text to update the URLs in.
+     * @return array(int, string) the draft itemid and the text with URLs rewritten.
+     */
+    public function prepare_response_files_draft_itemid_with_text($name, $contextid, $text) {
+        $draftid = 0; // Will be filled in by file_prepare_draft_area.
+        $newtext = file_prepare_draft_area($draftid, $contextid, 'question',
+                'response_' . $name, $this->id, null, $text);
+        return array($draftid, $newtext);
+    }
+
+    /**
+     * Rewrite the @@PLUGINFILE@@ tokens in a response variable from this step
+     * that contains links to file. Normally you should probably call
+     * {@link question_attempt::rewrite_response_pluginfile_urls()} instead of
+     * calling this method directly.
+     *
+     * @param string $text the text to update the URLs in.
+     * @param int $contextid the id of the context the quba belongs to.
+     * @param string $name the variable name the files belong to.
+     * @param array $extra extra file path components.
+     * @return string the rewritten text.
+     */
+    public function rewrite_response_pluginfile_urls($text, $contextid, $name, $extras) {
+        return question_rewrite_question_urls($text, 'pluginfile.php', $contextid,
+                'question', 'response_' . $name, $extras, $this->id);
+    }
+
+    /**
      * Get all the question type variables.
      * @param array name => value pairs.
      */
@@ -2660,7 +2883,7 @@ class question_attempt_step {
     }
 
     /**
-     * Get all the data. behaviour variables have the ! at the start of
+     * Get all the data. behaviour variables have the - at the start of
      * their name. This is only intended for internal use, for example by
      * {@link question_engine_data_mapper::insert_question_attempt_step()},
      * however, it can ocasionally be useful in test code. It should not be
@@ -2697,6 +2920,7 @@ class question_attempt_step {
 
         $step = new question_attempt_step_read_only($data, $record->timecreated, $record->userid);
         $step->state = question_state::get($record->state);
+        $step->id = $record->attemptstepid;
         if (!is_null($record->fraction)) {
             $step->fraction = $record->fraction + 0;
         }

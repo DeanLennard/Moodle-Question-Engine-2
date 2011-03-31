@@ -35,13 +35,36 @@ defined('MOODLE_INTERNAL') || die();
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 class qtype_essay_question extends question_with_responses {
+    public $responseformat;
+    public $responsefieldlines;
+    public $attachments;
+    public $graderinfo;
+    public $graderinfoformat;
+
     public function make_behaviour(question_attempt $qa, $preferredbehaviour) {
         question_engine::load_behaviour_class('manualgraded');
         return new qbehaviour_manualgraded($qa, $preferredbehaviour);
     }
 
+    /**
+     * @param moodle_page the page we are outputting to.
+     * @return qtype_essay_format_renderer_base the response-format-specific renderer.
+     */
+    public function get_format_renderer(moodle_page $page) {
+        return $page->get_renderer('qtype_essay', 'format_' . $this->responseformat);
+    }
+
     public function get_expected_data() {
-        return array('answer' => PARAM_CLEANHTML);
+        if ($this->responseformat == 'editorfilepicker') {
+            $expecteddata = array('answer' => question_attempt::PARAM_CLEANHTML_FILES);
+        } else {
+            $expecteddata = array('answer' => PARAM_CLEANHTML);
+        }
+        $expecteddata['answerformat'] = PARAM_FORMAT;
+        if ($this->attachments != 0) {
+            $expecteddata['attachments'] = question_attempt::PARAM_FILES;
+        }
+        return $expecteddata;
     }
 
     public function summarise_response(array $response) {
@@ -64,6 +87,25 @@ class qtype_essay_question extends question_with_responses {
 
     public function is_same_response(array $prevresponse, array $newresponse) {
         return question_utils::arrays_same_at_key_missing_is_blank(
-                $prevresponse, $newresponse, 'answer');
+                $prevresponse, $newresponse, 'answer') && ($this->attachments == 0 ||
+                question_utils::arrays_same_at_key_missing_is_blank(
+                $prevresponse, $newresponse, 'attachments'));
+    }
+
+    public function check_file_access($qa, $options, $component, $filearea, $args, $forcedownload) {
+        if ($component == 'question' && $filearea == 'response_attachments') {
+            // Response attachments visible if the question has them.
+            return $this->attachments != 0;
+
+        } else if ($component == 'question' && $filearea == 'response_answer') {
+            // Response attachments visible if the question has them.
+            return $this->responseformat === 'editorfilepicker';
+
+        } else if ($component == 'qtype_essay' && $filearea == 'graderinfo') {
+            return $options->manualcomment;
+
+        } else {
+            return parent::check_file_access($qa, $options, $component, $filearea, $args, $forcedownload);
+        }
     }
 }

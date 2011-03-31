@@ -69,7 +69,7 @@ class question_engine_data_mapper {
         $quba->set_id_from_database($newid);
 
         foreach ($quba->get_attempt_iterator() as $qa) {
-            $this->insert_question_attempt($qa);
+            $this->insert_question_attempt($qa, $quba->get_owning_context());
         }
     }
 
@@ -77,8 +77,9 @@ class question_engine_data_mapper {
      * Store an entire {@link question_attempt} in the database,
      * including all the question_attempt_steps that comprise it.
      * @param question_attempt $qa the question attempt to store.
+     * @param object $context the context of the owning question_usage_by_activity.
      */
-    public function insert_question_attempt(question_attempt $qa) {
+    public function insert_question_attempt(question_attempt $qa, $context) {
         $record = new stdClass();
         $record->questionusageid = $qa->get_usage_id();
         $record->slot = $qa->get_slot();
@@ -94,16 +95,19 @@ class question_engine_data_mapper {
         $record->id = $this->db->insert_record('question_attempts', $record);
 
         foreach ($qa->get_step_iterator() as $seq => $step) {
-            $this->insert_question_attempt_step($step, $record->id, $seq);
+            $this->insert_question_attempt_step($step, $record->id, $seq, $context);
         }
     }
 
     /**
      * Store a {@link question_attempt_step} in the database.
      * @param question_attempt_step $qa the step to store.
+     * @param int $questionattemptid the question attept id this step belongs to.
+     * @param int $seq the sequence number of this stop.
+     * @param object $context the context of the owning question_usage_by_activity.
      */
     public function insert_question_attempt_step(question_attempt_step $step,
-            $questionattemptid, $seq) {
+            $questionattemptid, $seq, $context) {
         $record = new stdClass();
         $record->questionattemptid = $questionattemptid;
         $record->sequencenumber = $seq;
@@ -115,6 +119,10 @@ class question_engine_data_mapper {
         $record->id = $this->db->insert_record('question_attempt_steps', $record);
 
         foreach ($step->get_all_data() as $name => $value) {
+            if ($value instanceof question_file_saver) {
+                $value->save_files($record->id, $context);
+            }
+
             $data = new stdClass();
             $data->attemptstepid = $record->id;
             $data->name = $name;
@@ -625,43 +633,78 @@ ORDER BY
      * Delete a question_usage_by_activity and all its associated
      * {@link question_attempts} and {@link question_attempt_steps} from the
      * database.
-     * @param string $where a where clause. Becuase of MySQL limitations, you
-     *      must refer to {question_usages}.id in full like that.
-     * @param array $params values to substitute for placeholders in $where.
+     * @param qubaid_condition $qubaids identifies which question useages to delete.
      */
-    public function delete_questions_usage_by_activities($where, $params) {
+    public function delete_questions_usage_by_activities(qubaid_condition $qubaids) {
+        $where = "qa.questionusageid {$qubaids->usage_id_in()}";
+        $params = $qubaids->usage_id_in_params();
+
+        $contextids = $this->db->get_records_sql_menu("
+                SELECT DISTINCT contextid, 1
+                FROM {question_usages}
+                WHERE id {$qubaids->usage_id_in()}", $params);
+        foreach ($contextids as $contextid => $notused) {
+            $this->delete_response_files($contextid, "IN (
+                    SELECT qas.id
+                    FROM {question_attempts} qa
+                    JOIN {question_attempt_steps} qas ON qas.questionattemptid = qa.id
+                    WHERE $where)", $params);
+        }
+
         $this->db->delete_records_select('question_attempt_step_data', "attemptstepid IN (
                 SELECT qas.id
                 FROM {question_attempts} qa
                 JOIN {question_attempt_steps} qas ON qas.questionattemptid = qa.id
-                JOIN {question_usages} ON qa.questionusageid = {question_usages}.id
                 WHERE $where)", $params);
+
         $this->db->delete_records_select('question_attempt_steps', "questionattemptid IN (
                 SELECT qa.id
                 FROM {question_attempts} qa
-                JOIN {question_usages} ON qa.questionusageid = {question_usages}.id
                 WHERE $where)", $params);
-        $this->db->delete_records_select('question_attempts', "questionusageid IN (
-                SELECT id
-                FROM {question_usages}
-                WHERE $where)", $params);
-        $this->db->delete_records_select('question_usages', $where, $params);
+
+        $this->db->delete_records_select('question_attempts',
+                "{question_attempts}.questionusageid {$qubaids->usage_id_in()}", $params);
+
+        $this->db->delete_records_select('question_usages',
+                "{question_usages}.id {$qubaids->usage_id_in()}", $params);
     }
 
     /**
      * Delete all the steps for a question attempt.
      * @param int $qaids question_attempt id.
      */
-    public function delete_steps_for_question_attempts($qaids) {
+    public function delete_steps_for_question_attempts($qaids, $context) {
         if (empty($qaids)) {
             return;
         }
-        list($test, $params) = $this->db->get_in_or_equal($qaids);
+        list($test, $params) = $this->db->get_in_or_equal($qaids, SQL_PARAMS_NAMED);
+
+        $this->delete_response_files($context->id, "IN (
+                SELECT id
+                FROM question_attempt_step
+                WHERE questionattemptid $test)", $params);
+
         $this->db->delete_records_select('question_attempt_step_data', "attemptstepid IN (
                 SELECT qas.id
                 FROM {question_attempt_steps} qas
                 WHERE questionattemptid $test)", $params);
         $this->db->delete_records_select('question_attempt_steps', 'questionattemptid ' . $test, $params);
+    }
+
+    /**
+     * Delete all the files belonging to the response variables in the gives
+     * question attempt steps.
+     * @param int $contextid the context these attempts belong to.
+     * @param string $itemidstest a bit of SQL that can be used in a
+     *      WHERE itemid $itemidstest clause. Must use named params.
+     * @param array $params any query parameters used in $itemidstest.
+     */
+    protected function delete_response_files($contextid, $itemidstest, $params) {
+        $fs = get_file_storage();
+        foreach ($this->get_all_response_file_areas() as $filearea) {
+            $fs->delete_area_files_select($contextid, 'question', $filearea,
+                    $itemidstest, $params);
+        }
     }
 
     /**
@@ -678,8 +721,7 @@ ORDER BY
         if (empty($previews)) {
             return;
         }
-        list($test, $params) = $this->db->get_in_or_equal(array_keys($previews));
-        $this->delete_questions_usage_by_activities('question_usages.id ' . $test, $params);
+        $this->delete_questions_usage_by_activities(new qubaid_list($previews));
     }
 
     /**
@@ -814,7 +856,24 @@ ORDER BY
                 'questionid ' . $test . ' AND questionusageid ' .
                 $qubaids->usage_id_in(), $params + $qubaids->usage_id_in_params());
     }
+
+    /**
+     * @return array all the file area names that may contain response files.
+     */
+    public static function get_all_response_file_areas() {
+        $variables = array();
+        foreach (question_bank::get_all_qtypes() as $qtype) {
+            $variables += $qtype->response_file_areas();
+        }
+
+        $areas = array();
+        foreach (array_unique($variables) as $variable) {
+            $areas[] = 'response_' . $variable;
+        }
+        return $areas;
+    }
 }
+
 
 /**
  * Implementation of the unit of work pattern for the question engine.
@@ -908,20 +967,120 @@ class question_engine_unit_of_work implements question_usage_observer {
      * @param question_engine_data_mapper $dm the mapper to use to update the database.
      */
     public function save(question_engine_data_mapper $dm) {
-        $dm->delete_steps_for_question_attempts(array_keys($this->attemptstodeletestepsfor));
+        $dm->delete_steps_for_question_attempts(array_keys($this->attemptstodeletestepsfor),
+                $this->quba->get_owning_context());
+
         foreach ($this->stepsadded as $stepinfo) {
             list($step, $questionattemptid, $seq) = $stepinfo;
-            $dm->insert_question_attempt_step($step, $questionattemptid, $seq);
+            $dm->insert_question_attempt_step($step, $questionattemptid, $seq,
+                    $this->quba->get_owning_context());
         }
+
         foreach ($this->attemptsadded as $qa) {
-            $dm->insert_question_attempt($qa);
+            $dm->insert_question_attempt($qa, $this->quba->get_owning_context());
         }
+
         foreach ($this->attemptsmodified as $qa) {
             $dm->update_question_attempt($qa);
         }
+
         if ($this->modified) {
             $dm->update_questions_usage_by_activity($this->quba);
         }
+    }
+}
+
+
+/**
+ * This class represents the promise to save some files from a particular draft
+ * file area into a particular file area. It is used beause the necessary
+ * information about what to save is to hand in the
+ * {@link question_attempt::process_response_files()} method, but we don't know
+ * if this question attempt will actually be saved in the database until later,
+ * when the {@link question_engine_unit_of_work} is saved, if it is.
+ *
+ * @copyright  2011 The Open University
+ * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
+ */
+class question_file_saver {
+    /** @var int the id of the draft file area to save files from. */
+    protected $draftitemid;
+    /** @var string the owning component name. */
+    protected $component;
+    /** @var string the file area name. */
+    protected $filearea;
+
+    /**
+     * @var string the value to store in the question_attempt_step_data to
+     * represent these files.
+     */
+    protected $value = null;
+
+    /**
+     * Constuctor.
+     * @param int $draftitemid the draft area to save the files from.
+     * @param string $component the component for the file area to save into.
+     * @param string $filearea the name of the file area to save into.
+     */
+    public function __construct($draftitemid, $component, $filearea, $text = null) {
+        $this->draftitemid = $draftitemid;
+        $this->component = $component;
+        $this->filearea = $filearea;
+        $this->value = $this->compute_value($draftitemid, $text);
+    }
+
+    /**
+     * Compute the value that should be stored in the question_attempt_step_data
+     * table. Contains a hash that (almost) uniquely encodes all the files.
+     * @param int $draftitemid the draft file area itemid.
+     * @param string $text optional content containing file links.
+     */
+    protected function compute_value($draftitemid, $text) {
+        global $USER;
+
+        $fs = get_file_storage();
+        $usercontext = get_context_instance(CONTEXT_USER, $USER->id);
+
+        $files = $fs->get_area_files($usercontext->id, 'user', 'draft',
+                $draftitemid, 'sortorder, filepath, filename', false);
+
+        $string = '';
+        foreach ($files as $file) {
+            $string .= $file->get_filepath() . $file->get_filename() . '|' .
+                    $file->get_contenthash() . '|';
+        }
+
+        if ($string) {
+            $hash = md5($string);
+        } else {
+            $hash = '';
+        }
+
+        if (is_null($text)) {
+            return $hash;
+        }
+
+        // We add the file hash so a simple string comparison will say if the
+        // files have been changed. First strip off any existing file hash.
+        $text = preg_replace('/\s*<!-- File hash: \w+ -->\s*$/', '', $text);
+        $text = file_rewrite_urls_to_pluginfile($text, $draftitemid);
+        if ($hash) {
+            $text .= '<!-- File hash: ' . $hash . ' -->';
+        }
+        return $text;
+    }
+
+    public function __toString() {
+        return $this->value;
+    }
+
+    /**
+     * Actually save the files.
+     * @param integer $itemid the item id for the file area to save into.
+     */
+    public function save_files($itemid, $context) {
+        file_save_draft_area_files($this->draftitemid, $context->id,
+                $this->component, $this->filearea, $itemid);
     }
 }
 
