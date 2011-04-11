@@ -151,13 +151,8 @@ class mod_quiz_renderer extends plugin_renderer_base {
                     $a = new stdClass();
                     $a->grade = '<b>' . quiz_format_grade($quiz, $grade) . '</b>';
                     $a->maxgrade = quiz_format_grade($quiz, $quiz->grade);
-                    if ($quiz->grade != 100) {
-                        $a->percent = '<b>'.round($attempt->sumgrades * 100 / $quiz->sumgrades, 0).
-                            '</b>';
-                        $formattedgrade = get_string('outofpercent', 'quiz', $a);
-                    } else {
-                        $formattedgrade = get_string('outof', 'quiz', $a);
-                    }
+                    $a->percent = $this->review_get_percent($attempt, $quiz);
+                    $formattedgrade = $this->review_formattedgrade($a);
                     $rows[] = $this->review_table_scaled_grade($formattedgrade);
                 }
             }
@@ -275,6 +270,33 @@ class mod_quiz_renderer extends plugin_renderer_base {
         $row = '<tr><th scope="row" class="cell">'.get_string('marks', 'quiz').
             '</th><td class="cell">'.get_string('outofshort', 'quiz', $a).'</td></tr>';
         return $row;
+    }
+
+    /**
+     * Retuns grade as a percentage.
+     *
+     * @param object $attempt an object containing the current attempt.
+     * @param object $quiz an object containing the current quiz.
+     */
+    public function review_get_percent($attempt, $quiz){
+        if ($quiz->grade != 100) {
+            $percent = '<b>'.round($attempt->sumgrades * 100 / $quiz->sumgrades, 0).'</b>';
+        }
+        return $percent;
+    }
+
+    /**
+     * Retuns the formatted grade.
+     *
+     * @param object $a an object containing the raw grade.
+     */
+    public function review_formattedgrade($a){
+        if ($quiz->grade != 100) {
+            $formattedgrade = get_string('outofpercent', 'quiz', $a);
+        } else {
+            $formattedgrade = get_string('outof', 'quiz', $a);
+        }
+        return $formattedgrade;
     }
 
     /**
