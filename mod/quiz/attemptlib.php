@@ -40,7 +40,7 @@ defined('MOODLE_INTERNAL') || die();
  * @since      Moodle 2.0
  */
 class moodle_quiz_exception extends moodle_exception {
-    public function __construct($quizobj, $errorcode, $a = NULL, $link = '', $debuginfo = null) {
+    public function __construct($quizobj, $errorcode, $a = null, $link = '', $debuginfo = null) {
         if (!$link) {
             $link = $quizobj->view_url();
         }
@@ -129,7 +129,7 @@ class quiz {
                 array('quizid' => $this->quiz->id));
     }
 
-   /**
+    /**
      * Fully load some or all of the questions for this quiz. You must call {@link preload_questions()} first.
      *
      * @param array $questionids question ids of the questions to load. null for all.
@@ -244,7 +244,7 @@ class quiz {
     public function get_access_manager($timenow) {
         if (is_null($this->accessmanager)) {
             $this->accessmanager = new quiz_access_manager($this, $timenow,
-                    has_capability('mod/quiz:ignoretimelimits', $this->context, NULL, false));
+                    has_capability('mod/quiz:ignoretimelimits', $this->context, null, false));
         }
         return $this->accessmanager;
     }
@@ -252,14 +252,14 @@ class quiz {
     /**
      * Wrapper round the has_capability funciton that automatically passes in the quiz context.
      */
-    public function has_capability($capability, $userid = NULL, $doanything = true) {
+    public function has_capability($capability, $userid = null, $doanything = true) {
         return has_capability($capability, $this->context, $userid, $doanything);
     }
 
     /**
      * Wrapper round the require_capability funciton that automatically passes in the quiz context.
      */
-    public function require_capability($capability, $userid = NULL, $doanything = true) {
+    public function require_capability($capability, $userid = null, $doanything = true) {
         return require_capability($capability, $this->context, $userid, $doanything);
     }
 
@@ -320,8 +320,8 @@ class quiz {
 
     // Private methods =====================================================================
     /**
-     *  Check that the definition of a particular question is loaded, and if not throw an exception.
-     *  @param $id a questionid.
+     * Check that the definition of a particular question is loaded, and if not throw an exception.
+     * @param $id a questionid.
      */
     protected function ensure_question_loaded($id) {
         if (isset($this->questions[$id]->_partiallyloaded)) {
@@ -373,11 +373,11 @@ class quiz_attempt {
     protected static function create_helper($conditions) {
         global $DB;
 
-// TODO deal with the issue that makes this necessary.
-//    if (!$DB->record_exists('question_sessions', array('attemptid' => $attempt->uniqueid))) {
-//        // this attempt has not yet been upgraded to the new model
-//        quiz_upgrade_states($attempt);
-//    }
+        //TODO deal with the issue that makes this necessary.
+        //if (!$DB->record_exists('question_sessions', array('attemptid' => $attempt->uniqueid))) {
+            // this attempt has not yet been upgraded to the new model
+            //quiz_upgrade_states($attempt);
+        //}
 
         $attempt = $DB->get_record('quiz_attempts', $conditions, '*', MUST_EXIST);
         $quiz = $DB->get_record('quiz', array('id' => $attempt->quiz), '*', MUST_EXIST);
@@ -597,14 +597,14 @@ class quiz_attempt {
     /**
      * Wrapper round the has_capability funciton that automatically passes in the quiz context.
      */
-    public function has_capability($capability, $userid = NULL, $doanything = true) {
+    public function has_capability($capability, $userid = null, $doanything = true) {
         return $this->quizobj->has_capability($capability, $userid, $doanything);
     }
 
     /**
      * Wrapper round the require_capability funciton that automatically passes in the quiz context.
      */
-    public function require_capability($capability, $userid = NULL, $doanything = true) {
+    public function require_capability($capability, $userid = null, $doanything = true) {
         return $this->quizobj->require_capability($capability, $userid, $doanything);
     }
 
@@ -1096,6 +1096,72 @@ class quiz_attempt {
             }
             return $url;
         }
+    }
+
+    public function check_permissions($page, $options, $accessmanager) {
+        // Check permissions.
+        if ($this->is_own_attempt()) {
+            if (!$this->is_finished()) {
+                redirect($this->attempt_url(0, $page));
+            } else if (!$options->attempt) {
+                $accessmanager->back_to_view_page($this->is_preview_user(),
+                        $accessmanager->cannot_review_message($this->get_attempt_state()));
+            }
+
+        } else if (!$this->is_review_allowed()) {
+            throw new moodle_quiz_exception($this->get_quizobj(), 'noreviewattempt');
+        }
+    }
+
+    public function get_questionslots($page, $showall) {
+        if ($showall) {
+            $questionids = $this->get_slots();
+        } else {
+            $questionids = $this->get_slots($page);
+        }
+        return $questionids;
+    }
+
+    public function get_timetaken($attempt, $quiz) {
+        if ($attempt->timefinish) {
+            if ($timetaken = ($attempt->timefinish - $attempt->timestart)) {
+                $timetaken = format_time($timetaken);
+            } else {
+                $timetaken = "-";
+            }
+        } else {
+            $timetaken = get_string('unfinished', 'quiz');
+        }
+        return $timetaken;
+    }
+
+    public function get_overtime($timetaken, $attempt, $quiz) {
+        $overtime = 0;
+        if ($attempt->timefinish) {
+            if ($quiz->timelimit && $timetaken > ($quiz->timelimit + 60)) {
+                $overtime = $timetaken - $quiz->timelimit;
+                $overtime = format_time($overtime);
+            }
+        }
+        return $overtime;
+    }
+
+    public function get_thispage($page, $showall) {
+        if ($showall) {
+            $thispage = 'all';
+        } else {
+            $thispage = $page;
+        }
+        return $thispage;
+    }
+
+    public function get_lastpage($page, $showall) {
+        if ($showall) {
+            $lastpage = true;
+        } else {
+            $lastpage = $this->is_last_page($page);
+        }
+        return $lastpage;
     }
 }
 
