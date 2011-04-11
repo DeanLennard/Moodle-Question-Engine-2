@@ -26,6 +26,15 @@
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 class mod_quiz_renderer extends plugin_renderer_base {
+    /**
+     * Displays the header of the page and relevent header information.
+     *
+     * @param object $attemptobj an object containing an instance of the attempt
+     * @param object $accessmanager an object containing an instance of the quiz_access_manager
+     * @param int $page -1 to look up the page number from the slot, otherwise the page number to
+     * go to.
+     * @param int $showall 0 gets all pages, 1 gets the current page.
+     */
     public function review_header($attemptobj, $accessmanager, $page, $showall) {
         global $PAGE, $OUTPUT;
         // Work out appropriate title and whether blocks should be shown
@@ -62,6 +71,14 @@ class mod_quiz_renderer extends plugin_renderer_base {
         }
     }
 
+    /**
+     * Displays the quiz navigation block.
+     *
+     * @param object $attemptobj an object containing an instance of the attempt
+     * @param int $page -1 to look up the page number from the slot, otherwise the page number to
+     * go to.
+     * @param int $showall 0 gets all pages, 1 gets the current page.
+     */
     public function review_navigation($attemptobj, $page, $showall) {
         global $PAGE;
         //Arrange for the navigation to be displayed.
@@ -70,6 +87,19 @@ class mod_quiz_renderer extends plugin_renderer_base {
         $PAGE->blocks->add_fake_block($navbc, $firstregion);
     }
 
+    /**
+     * Displays the data about this attempt.
+     *
+     * @param object $attemptobj an object containing an instance of the attempt
+     * @param int $page -1 to look up the page number from the slot, otherwise the page number to
+     * go to.
+     * @param int $showall 0 gets all pages, 1 gets the current page.
+     * @param object $attempt an object containing the current attempt.
+     * @param int $timetaken a timestamp of the time taken.
+     * @param int $overtime a timestamp of the overdue time.
+     * @param object $options an object containing the render options for that user on that page.
+     * @param object $quiz an object containing the current quiz.
+     */
     public function review_table($attemptobj, $page, $showall, $attempt, $timetaken, $overtime,
         $options, $quiz) {
         global $CFG, $USER, $DB, $OUTPUT;
@@ -147,6 +177,13 @@ class mod_quiz_renderer extends plugin_renderer_base {
         return $table;
     }
 
+    /**
+     * Returns the row with the users picture.
+     *
+     * @param object $attemptobj an object containing an instance of the attempt.
+     * @param object $student an object contining the student information.
+     * go to.
+     */
     public function review_user_picture($attemptobj, $student) {
         $picture = $OUTPUT->user_picture($student, array('courseid'=>$attemptobj->get_courseid()));
         $row ='<tr><th scope="row" class="cell">'.$picture.'</th><td class="cell"><a href="'.
@@ -155,6 +192,14 @@ class mod_quiz_renderer extends plugin_renderer_base {
         return $row;
     }
 
+    /**
+     * Returns the row containing the attempt list.
+     *
+     * @param object $attemptobj an object containing an instance of the attempt
+     * @param int $page -1 to look up the page number from the slot, otherwise the page number to
+     * go to.
+     * @param int $showall 0 gets all pages, 1 gets the current page.
+     */
     public function review_table_attemptlist($attemptobj, $page, $showall) {
         $attemptlist = $attemptobj->links_to_other_attempts($attemptobj->review_url(0, $page,
             $showall));
@@ -164,12 +209,23 @@ class mod_quiz_renderer extends plugin_renderer_base {
         }
     }
 
+    /**
+     * Retuns the row containg the start time.
+     *
+     * @param object $attempt an object containing the current attempt.
+     */
     public function review_table_time($attempt) {
         $row = '<tr><th scope="row" class="cell">'.get_string('startedon', 'quiz').
             '</th><td class="cell">'.userdate($attempt->timestart).'</td></tr>';
         return $row;
     }
 
+    /**
+     * Retuns the row containg the finish time and time taken.
+     *
+     * @param object $attempt an object containing the current attempt.
+     * @param int $timetaken time stamp of the time taken.
+     */
     public function review_table_finished($attempt, $timetaken) {
         $row = '<tr><th scope="row" class="cell">'.get_string('completedon', 'quiz').
             '</th><td class="cell">'.userdate($attempt->timefinish).'</td></tr>';
@@ -178,42 +234,76 @@ class mod_quiz_renderer extends plugin_renderer_base {
         return $row;
     }
 
+    /**
+     * Retuns the row containg the over time.
+     *
+     * @param int $overtime time stamp of the over time.
+     */
     public function review_table_overtime($overtime) {
         $row = '<tr><th scope="row" class="cell">'.get_string('overdue', 'quiz').
             '</th><td class="cell">'.$overtime.'</td></tr>';
         return $row;
     }
 
+    /**
+     * Retuns the row containg still in progress.
+     */
     public function review_table_inprogress() {
         $row = '<tr><th scope="row" class="cell">'.get_string('grade').'</th><td class="cell">'.
             get_string('attemptstillinprogress', 'quiz').'</td></tr>';
         return $row;
     }
 
+    /**
+     * Retuns the row containg the not graded.
+     *
+     * @param object $quiz an object containing the current quiz.
+     * @param float|string $grade contains the grade.
+     */
     public function review_table_nograde($quiz, $grade) {
         $row = '<tr><th scope="row" class="cell">'.get_string('grade').'</th><td class="cell">'.
             quiz_format_grade($quiz, $grade).'</td></tr>';
         return $row;
     }
 
+    /**
+     * Retuns the row containg the raw grade.
+     *
+     * @param object $a an object containing the raw grade.
+     */
     public function review_table_raw_grade($a) {
         $row = '<tr><th scope="row" class="cell">'.get_string('marks', 'quiz').
             '</th><td class="cell">'.get_string('outofshort', 'quiz', $a).'</td></tr>';
         return $row;
     }
 
+    /**
+     * Retuns the row containg the scaled grade.
+     *
+     * @param string $formattedgrade contains the grade.
+     */
     public function review_table_scaled_grade($formattedgrade) {
         $row = '<tr><th scope="row" class="cell">'.get_string('grade').'</th><td class="cell">'.
             $formattedgrade.'</td></tr>';
         return $row;
     }
 
+    /**
+     * Retuns the row containg any feedback.
+     *
+     * @param object $feedback contains any feed back the student is allowed to see.
+     */
     public function review_table_feedback($feedback) {
         $row = '<tr><th scope="row" class="cell">'.get_string('feedback', 'quiz').
             '</th><td class="cell">'.$feedback.'</td></tr>';
         return $row;
     }
 
+    /**
+     * Display the table containg all the rows of data.
+     *
+     * @param array $rows an array containing all teh rows for the table.
+     */
     public function review_display_table($rows) {
         $table = '<table class="generaltable generalbox quizreviewsummary"><tbody>'. "\n";
         $table .= implode("\n", $rows);
@@ -221,6 +311,15 @@ class mod_quiz_renderer extends plugin_renderer_base {
         echo $table;
     }
 
+    /**
+     * Opens & displays the review form. 
+     *
+     * @param object $attemptobj an object containing an instance of the attempt
+     * @param int $page -1 to look up the page number from the slot, otherwise the page number to
+     * go to.
+     * @param int $showall 0 gets all pages, 1 gets the current page.
+     * @param object $options an object containing the render options for that user on that page.
+     */
     public function review_form($attemptobj, $page, $showall, $options) {
         // Form for saving flags if necessary.
         if ($options->flags == question_display_options::EDITABLE) {
@@ -230,6 +329,15 @@ class mod_quiz_renderer extends plugin_renderer_base {
         }
     }
 
+    /**
+     * Opens & displays the review form. 
+     *
+     * @param object $attemptobj an object containing an instance of the attempt.
+     * @param string $thispage a string containing data about this page.
+     * @param int $page -1 to look up the page number from the slot, otherwise the page number to
+     * go to.
+     * @param int $showall 0 gets all pages, 1 gets the current page.
+     */
     public function review_questions($attemptobj, $thispage, $page, $showall) {
         foreach ($attemptobj->get_slots($thispage) as $slot) {
             echo $attemptobj->render_question($slot, true, $attemptobj->review_url($slot, $page,
@@ -237,6 +345,11 @@ class mod_quiz_renderer extends plugin_renderer_base {
         }
     }
 
+    /**
+     * Closes & displays the review form. 
+     *
+     * @param object $options an object containing the render options for that user on that page.
+     */
     public function review_close_form($options) {
         global $PAGE;
         // Close form if we opened it.
@@ -249,6 +362,15 @@ class mod_quiz_renderer extends plugin_renderer_base {
         }
     }
 
+    /**
+     * Displays the submit links 
+     *
+     * @param object $attemptobj an object containing an instance of the attempt.
+     * @param object $accessmanager an object containing an instance of the quiz_access_manager
+     * @param int $page -1 to look up the page number from the slot, otherwise the page number to
+     * go to.
+     * @param string $lastpage a string containing data about the last page.
+     */
     public function review_submit($attemptobj, $accessmanager, $page, $lastpage) {
         // Print a link to the next page.
         echo '<div class="submitbtns">';
@@ -260,6 +382,9 @@ class mod_quiz_renderer extends plugin_renderer_base {
         echo '</div>';
     }
 
+    /**
+     * Displays the footer
+     */
     public function footer() {
         global $OUTPUT;
         echo $OUTPUT->footer();

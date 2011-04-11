@@ -1098,6 +1098,15 @@ class quiz_attempt {
         }
     }
 
+    /**
+     * Checks the permissions of the user to see if they can view the attempt
+     *
+     * @param int $page -1 to look up the page number from the slot, otherwise the page number to
+     * go to.
+     * @param object $options an object containing the render options for that user on that page.
+     * @param object $accessmanager an object containing an instance of the quiz_access_manager
+     * class for this quiz at this time.
+     */
     public function check_permissions($page, $options, $accessmanager) {
         // Check permissions.
         if ($this->is_own_attempt()) {
@@ -1113,6 +1122,14 @@ class quiz_attempt {
         }
     }
 
+    /**
+     * Gets all the slots for this attempt
+     *
+     * @param int $page -1 to look up the page number from the slot, otherwise the page number to
+     * go to.
+     * @param int $showall 0 gets all the slots for an attempt, 1 gets all teh slots for a page.
+     * @return An arry of question ids.
+     */
     public function get_questionslots($page, $showall) {
         if ($showall) {
             $questionids = $this->get_slots();
@@ -1122,6 +1139,13 @@ class quiz_attempt {
         return $questionids;
     }
 
+    /**
+     * Gets the time a quiz was taken. 
+     *
+     * @param object $attempt an object containing the current attempt.
+     * @param object $quiz an object containing the current quiz.
+     * @return The time an attempt was taken.
+     */
     public function get_timetaken($attempt, $quiz) {
         if ($attempt->timefinish) {
             if ($timetaken = ($attempt->timefinish - $attempt->timestart)) {
@@ -1135,6 +1159,14 @@ class quiz_attempt {
         return $timetaken;
     }
 
+    /**
+     * Gets the amount of time a quiz was overdue by. 
+     *
+     * @param int $timetaken a timestamp of the time taken.
+     * @param object $attempt an object containing the current attempt.
+     * @param object $quiz an object containing teh current quiz.
+     * @return The overtime amount of an attempt.
+     */
     public function get_overtime($timetaken, $attempt, $quiz) {
         $overtime = 0;
         if ($attempt->timefinish) {
@@ -1146,6 +1178,14 @@ class quiz_attempt {
         return $overtime;
     }
 
+    /**
+     * Gets the current page
+     *
+     * @param int $page -1 to look up the page number from the slot, otherwise the page number to
+     * go to.
+     * @param int $showall 0 gets all pages, 1 gets the current page.
+     * @return the current page.
+     */
     public function get_thispage($page, $showall) {
         if ($showall) {
             $thispage = 'all';
@@ -1155,6 +1195,14 @@ class quiz_attempt {
         return $thispage;
     }
 
+    /**
+     * Gets the last page
+     *
+     * @param int $page -1 to look up the page number from the slot, otherwise the page number to
+     * go to.
+     * @param int $showall 0 gets all pages, 1 gets the last page.
+     * @return the last page.
+     */
     public function get_lastpage($page, $showall) {
         if ($showall) {
             $lastpage = true;
