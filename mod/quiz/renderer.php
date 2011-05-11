@@ -349,7 +349,7 @@ class mod_quiz_renderer extends plugin_renderer_base {
      *
      * @param array $messages
      */
-    private function quiz_notices($messages) {
+    public function quiz_notices($messages) {
         if (!$messages) {
             return '';
         }
@@ -366,7 +366,7 @@ class mod_quiz_renderer extends plugin_renderer_base {
      * @param int $id ID of the attempt
      * @param int $nextpage Next page number
      */
-    private function attempt_form($attemptobj, $page, $slots, $id, $nextpage) {
+    public function attempt_form($attemptobj, $page, $slots, $id, $nextpage) {
         $output = '';
 
         //Start Form
@@ -413,6 +413,14 @@ class mod_quiz_renderer extends plugin_renderer_base {
 
         return $output;
     }
+    
+    public function navigation_block($attemptobj, $page){
+        global $PAGE;
+        // Arrange for the navigation to be displayed.
+        $navbc = $attemptobj->get_navigation_panel($this, 'quiz_attempt_nav_panel', $page);
+        $firstregion = reset($PAGE->blocks->get_regions());
+        $PAGE->blocks->add_fake_block($navbc, $firstregion);
+    }
 
     /**
      * Print each message in an array, surrounded by &lt;p>, &lt;/p> tags.
@@ -453,7 +461,7 @@ class mod_quiz_renderer extends plugin_renderer_base {
      * @param quiz_attempt $attemptobj
      * @param mod_quiz_display_options $displayoptions
      */
-    private function summary_table($attemptobj, $displayoptions) {
+    public function summary_table($attemptobj, $displayoptions) {
         // Prepare the summary table header
         $table = new html_table();
         $table->attributes['class'] = 'generaltable quizsummaryofattempt boxaligncenter';
@@ -500,7 +508,7 @@ class mod_quiz_renderer extends plugin_renderer_base {
      *
      * @param quiz_attempt $attemptobj
      */
-    private function summary_page_controls($attemptobj) {
+    public function summary_page_controls($attemptobj) {
         $output = '';
         // countdown timer
         $output .= $this->countdown_timer();
@@ -601,7 +609,7 @@ class mod_quiz_renderer extends plugin_renderer_base {
      * @param int $context The page contect ID
      * @param array $messages Array containing any messages
      */
-    private function view_information($course, $quiz, $cm, $context, $messages) {
+    public function view_information($course, $quiz, $cm, $context, $messages) {
         global $CFG;
         $output = '';
         // Print quiz name and description
@@ -633,7 +641,7 @@ class mod_quiz_renderer extends plugin_renderer_base {
      * @param int $context The page context ID
      * @param mod_quiz_view_object $viewobj
      */
-    private function view_table($quiz, $context, $viewobj) {
+    public function view_table($quiz, $context, $viewobj) {
         $output = '';
         if (!$viewobj->attempts) {
             return $output;
@@ -775,7 +783,7 @@ class mod_quiz_renderer extends plugin_renderer_base {
      *
      * @param mod_quiz_view_object $viewobj
      */
-    private function view_best_score($viewobj) {
+    public function view_best_score($viewobj) {
         $output = '';
         // Print information about the student's best score for this quiz if possible.
         if (!$viewobj->moreattempts) {
@@ -792,7 +800,7 @@ class mod_quiz_renderer extends plugin_renderer_base {
      * @param int $cm The Course Module Id
      * @param mod_quiz_view_object $viewobj
      */
-    private function view_result_info($quiz, $context, $cm, $viewobj) {
+    public function view_result_info($quiz, $context, $cm, $viewobj) {
         $output = '';
         if (!$viewobj->numattempts && !$viewobj->gradecolumn && is_null($viewobj->mygrade)) {
             return $output;
@@ -849,7 +857,7 @@ class mod_quiz_renderer extends plugin_renderer_base {
      * @param mod_quiz_view_object $viewobj
      * @param string $buttontext
      */
-    private function view_attempt_button($course, $quiz, $cm, $context, $viewobj, $buttontext) {
+    public function view_attempt_button($course, $quiz, $cm, $context, $viewobj, $buttontext) {
         $output = '';
         // Determine if we should be showing a start/continue attempt button,
         // or a button to go back to the course page.
@@ -884,7 +892,7 @@ class mod_quiz_renderer extends plugin_renderer_base {
      *         (e.g. a report) pass it in here. Default 0 which means no current group.
      * @return string HTML fragment for the link.
      */
-    private function quiz_attempt_summary_link_to_reports($quiz, $cm, $context,
+    public function quiz_attempt_summary_link_to_reports($quiz, $cm, $context,
                                                           $returnzero = false, $currentgroup = 0) {
         global $CFG;
         $summary = quiz_num_attempt_summary($quiz, $cm, $returnzero, $currentgroup);
